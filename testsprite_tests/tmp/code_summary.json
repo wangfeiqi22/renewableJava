@@ -1,0 +1,67 @@
+{
+  "tech_stack": ["Java 17", "Spring Boot 3", "Vue 3", "Element Plus", "H2 Database"],
+  "features": [
+    {
+      "name": "Authentication",
+      "description": "User login and registration with role-based access control (Admin, Driver, Individual, Property)",
+      "files": ["backend/src/main/java/com/renewable/ai/controller/AuthController.java"],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/auth/login": { "post": { "summary": "Login" } },
+          "/auth/register": { "post": { "summary": "Register" } }
+        }
+      }
+    },
+    {
+      "name": "Order Management",
+      "description": "Create waste collection orders, track status, and assign to drivers",
+      "files": ["backend/src/main/java/com/renewable/ai/controller/OrderController.java"],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/orders": { "post": { "summary": "Create Order" }, "get": { "summary": "List Orders" } },
+          "/orders/{id}/status": { "put": { "summary": "Update Order Status" } }
+        }
+      }
+    },
+    {
+      "name": "Admin Dashboard",
+      "description": "System overview statistics and management",
+      "files": ["backend/src/main/java/com/renewable/ai/controller/AdminController.java"],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/admin/dashboard/stats": { "get": { "summary": "Get Dashboard Stats" } }
+        }
+      }
+    },
+    {
+      "name": "Station & Fleet Management",
+      "description": "Manage waste stations, fleets and vehicles",
+      "files": [
+        "backend/src/main/java/com/renewable/ai/controller/StationController.java",
+        "backend/src/main/java/com/renewable/ai/controller/FleetController.java"
+      ],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/stations": { "get": { "summary": "List Stations" }, "post": { "summary": "Add Station" } },
+          "/fleets": { "get": { "summary": "List Fleets" }, "post": { "summary": "Add Fleet" } }
+        }
+      }
+    },
+    {
+      "name": "AI Assistant",
+      "description": "Smart customer service chat",
+      "files": ["backend/src/main/java/com/renewable/ai/controller/AiChatController.java"],
+      "api_doc": {
+        "openapi": "3.0.0",
+        "paths": {
+          "/ai/chat": { "post": { "summary": "Send Message" } },
+          "/ai/sessions": { "post": { "summary": "Create Session" } }
+        }
+      }
+    }
+  ]
+}
