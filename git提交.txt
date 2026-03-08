@@ -1,0 +1,12 @@
+# 添加所有文件到暂存区
+git add .
+
+# 提交代码
+git commit -m "Initial commit: Complete Driver App with Map and Timeline"
+
+# 关联远程仓库（我已经帮您关联了，这里再次确认以防万一）
+git remote add origin https://github.com/wangfeiqi22/renewableJava.git
+# 如果提示 remote origin already exists，可以忽略
+
+# 推送到 GitHub（这一步可能需要您输入 GitHub 的账号密码或 Token）
+git push -u origin main
