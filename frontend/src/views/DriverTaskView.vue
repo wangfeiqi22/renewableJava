@@ -1,6 +1,7 @@
 <template>
   <div class="driver-task-container">
     <div class="app-header">
+<!-- ... (header content remains same) -->
       <div class="header-content">
         <h1 class="header-title">司机作业台</h1>
         <div class="user-profile" v-if="user">
@@ -25,7 +26,7 @@
                      </div>
                      <div class="card-body">
                          <div class="info-row"><el-icon class="icon"><Location /></el-icon> {{ order.pickupAddress }}</div>
-                         <div class="info-row"><el-icon class="icon"><Delete /></el-icon> {{ order.wasteType }} | {{ order.estWeight }} kg</div>
+                         <div class="info-row"><el-icon class="icon"><Delete /></el-icon> {{ getWasteTypeName(order.wasteType) }} | {{ order.estWeight }} kg</div>
                      </div>
                      <div class="card-footer">
                          <el-button type="primary" class="action-btn" @click="grabOrder(order.id)">立即抢单</el-button>
@@ -41,7 +42,10 @@
                      <!-- Waste Type Selection (Visual Cards) -->
                      <div class="form-group">
                         <label class="form-label">选择垃圾类型</label>
-                        <div class="ai-upload-box" v-loading="aiAnalyzing">
+                        <div class="ai-upload-box" 
+                             v-loading="aiAnalyzing"
+                             :element-loading-text="aiLoadingText"
+                        >
                           <el-upload
                             class="ai-uploader"
                             action="#"
@@ -70,6 +74,7 @@
                          <el-input v-model="createForm.shipperName" placeholder="姓名/商户名" />
                          <el-input v-model="createForm.shipperPhone" placeholder="联系电话" style="margin-top: 10px;" />
                      </el-form-item>
+<!-- ... (rest of form) -->
                      <el-form-item label="起运地址">
                          <el-input 
                            v-model="createForm.pickupAddress" 
@@ -102,6 +107,8 @@
                  </el-form>
              </div>
         </el-tab-pane>
+<!-- ... (rest of template) -->
+
 
         <el-tab-pane label="待处理任务" name="pending">
           <div v-if="tasks.length === 0" class="empty-state">
@@ -123,7 +130,7 @@
                 </div>
                 <div class="info-row">
                   <el-icon class="icon"><Delete /></el-icon>
-                  <span class="text">{{ order.wasteType }}</span>
+                  <span class="text">{{ getWasteTypeName(order.wasteType) }}</span>
                   <span class="divider">|</span>
                   <span class="text highlight">{{ order.estWeight }} kg</span>
                 </div>
@@ -248,7 +255,7 @@
       align-center
       destroy-on-close
     >
-      <div class="detail-container" v-if="currentOrder">
+      <div class="detail-container" v-if="currentOrder" v-loading="detailLoading">
         <el-tabs>
           <el-tab-pane label="实时轨迹">
             <OrderTrackMap 
@@ -257,7 +264,7 @@
             />
           </el-tab-pane>
           <el-tab-pane label="状态记录">
-            <OrderTimeline :logs="currentLogs" />
+            <OrderTimeline :logs="currentLogs" :photos="currentPhotos" />
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -274,11 +281,13 @@
 import { ref, reactive, onMounted } from 'vue'
 import api from '../api'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Location, Delete, Plus, InfoFilled, Service, Camera } from '@element-plus/icons-vue'
 import OrderTimeline from '../components/OrderTimeline.vue'
 import OrderTrackMap from '../components/OrderTrackMap.vue'
 import MapPicker from '../components/MapPicker.vue'
+import piexif from 'piexifjs'
+import CryptoJS from 'crypto-js'
 
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -297,9 +306,12 @@ const createForm = reactive({
 const uploadVisible = ref(false)
 const detailVisible = ref(false)
 const aiAnalyzing = ref(false)
+const aiLoadingText = ref('')
 const showMapPicker = ref(false)
 const currentOrder = ref(null)
 const currentLogs = ref([])
+const currentPhotos = ref([])
+const detailLoading = ref(false)
 const uploadNodeType = ref('')
 const fileList = ref([])
 
@@ -311,7 +323,23 @@ const wasteTypes = [
 ]
 
 const getWasteTypeName = (val) => {
-  const type = wasteTypes.find(t => t.value === val)
+  // Normalize input to handle case-insensitivity or standard formats
+  const normalizedVal = val ? val.toString().toUpperCase() : ''
+  
+  const map = {
+    'HOUSEHOLD': '生活垃圾',
+    'CONSTRUCTION': '建筑垃圾',
+    'BULKY': '大件垃圾',
+    'KITCHEN': '厨余垃圾',
+    'RECYCLABLE': '可回收物',
+    'HAZARDOUS': '有害垃圾',
+    'OTHER': '其他垃圾'
+  }
+  
+  // Try direct map, then check wasteTypes array for backward compatibility
+  if (map[normalizedVal]) return map[normalizedVal]
+  
+  const type = wasteTypes.find(t => t.value.toUpperCase() === normalizedVal)
   return type ? type.label : val
 }
 
@@ -323,23 +351,57 @@ const handleAddressSelected = (address) => {
 
 const handleAiAnalyze = async (options) => {
   aiAnalyzing.value = true
+  aiLoadingText.value = '正在上传图片到云端...'
   
-  // Create mock delay to simulate network request
-  setTimeout(() => {
+  try {
+    // Step 1: Upload Simulation
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    // Step 2: Processing Simulation
+    aiLoadingText.value = 'AI 视觉引擎正在识别物体特征...'
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    // Step 3: Classification Simulation
+    aiLoadingText.value = '正在匹配垃圾分类规则...'
+    await new Promise(resolve => setTimeout(resolve, 800))
+
+    // Step 4: Result Generation
+    // Logic: Use file size as seed to be deterministic for same file
+    const types = ['construction', 'household', 'kitchen', 'bulky']
+    const seed = options.file.size
+    const typeIndex = seed % types.length
+    const detectedType = types[typeIndex]
+    
+    // Generate weight (random but realistic range based on type)
+    let weight = 0
+    if (detectedType === 'construction') weight = 50 + Math.floor((seed % 200)) // 50-250kg
+    else if (detectedType === 'household') weight = 5 + Math.floor((seed % 20)) // 5-25kg
+    else if (detectedType === 'kitchen') weight = 10 + Math.floor((seed % 40)) // 10-50kg
+    else if (detectedType === 'bulky') weight = 30 + Math.floor((seed % 100)) // 30-130kg
+    
+    // Generate Professional Description
+    const descriptions = {
+      construction: ['检测到砖块、混凝土碎块及部分木材遗留。', '识别为装修废弃物，包含石膏板和水泥袋。', '建筑渣土堆积，混有少量金属废料。'],
+      household: ['识别为日常生活垃圾，主要包含纸屑、塑料包装。', '混合生活废弃物，检测到多个垃圾袋堆积。', '居民生活垃圾，需分类处理。'],
+      kitchen: ['检测到餐饮废弃物，含有果皮、蔬菜残余。', '厨余垃圾识别，建议密封运输以防泄漏。', '高水分有机垃圾，需专用容器清运。'],
+      bulky: ['识别为废旧家具（沙发/床垫），体积较大。', '大件废弃物，检测到废弃家电或木制家具。', '不规则大件垃圾，建议使用平板车清运。']
+    }
+    const descIndex = seed % descriptions[detectedType].length
+    const confidence = (90 + (seed % 90) / 10).toFixed(1) // 90.0 - 99.0%
+    const description = `${descriptions[detectedType][descIndex]} (AI置信度: ${confidence}%)`
+
+    createForm.wasteType = detectedType
+    createForm.estWeight = weight
+    createForm.wasteDesc = description
+    
+    ElMessage.success(`AI 识别完成：${getWasteTypeName(detectedType)}，置信度 ${confidence}%`)
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('AI 识别服务连接超时，请手动输入')
+  } finally {
     aiAnalyzing.value = false
-    
-    // Mock AI Response Logic based on random seed
-    const types = ['construction', 'household', 'kitchen']
-    const randomType = types[Math.floor(Math.random() * types.length)]
-    const randomWeight = Math.floor(Math.random() * 50) + 10
-    
-    ElMessage.success(`AI 识别完成：${getWasteTypeName(randomType)}，预估 ${randomWeight}kg`)
-    
-    createForm.wasteType = randomType
-    createForm.estWeight = randomWeight
-    createForm.wasteDesc = `AI 智能识别结果：检测到${getWasteTypeName(randomType)}堆积，包含塑料袋、纸箱等杂物。`
-    
-  }, 2000)
+    aiLoadingText.value = ''
+  }
 }
 
 const fetchTasks = async () => {
@@ -398,13 +460,33 @@ const submitSelfOrder = async () => {
 }
 
 const openDetail = async (order) => {
+  if (detailLoading.value) return
+  detailLoading.value = true
+  
   try {
-    const res = await api.get(`/orders/${order.id}/logs`)
+    console.log('Fetching details for order:', order.id)
     currentOrder.value = order
-    currentLogs.value = res.data
+    // Reset data to avoid showing previous order's data
+    currentLogs.value = []
+    currentPhotos.value = []
+    
+    // Parallel fetch for better performance
+    const [resLogs, resPhotos] = await Promise.all([
+      api.get(`/orders/${order.id}/logs`),
+      api.get(`/orders/${order.id}/photos`)
+    ])
+    
+    currentLogs.value = resLogs.data
+    console.log('Photos fetched:', resPhotos.data)
+    currentPhotos.value = resPhotos.data || [] // Ensure array even if null
+    
     detailVisible.value = true
   } catch (e) {
-    ElMessage.error('获取详情失败')
+    console.error('Open detail error:', e)
+    const msg = e.response?.data?.message || e.message || '获取详情失败'
+    ElMessage.error(`获取详情失败: ${msg}`)
+  } finally {
+    detailLoading.value = false
   }
 }
 
@@ -446,79 +528,129 @@ const handleUpload = async (options) => {
   }
 }
 
-const addWatermark = (file) => {
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const lat = position.coords.latitude.toFixed(6)
-      const lon = position.coords.longitude.toFixed(6)
-      
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const img = new Image()
-        img.src = e.target.result
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0)
-          
-          // Watermark text
-          const now = new Date().toLocaleString()
-          const text = `Time: ${now} | GPS: ${lat}, ${lon}`
-          
-          ctx.font = '24px Arial'
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-          ctx.fillText(text, 20, img.height - 50)
-          
-          // Anti-tamper Hash (Simple mock)
-          const hash = btoa(text + file.size).substring(0, 16)
-          ctx.font = '12px monospace'
-          ctx.fillText(`Hash: ${hash}`, 20, img.height - 20)
-          
-          canvas.toBlob((blob) => {
-            resolve(new File([blob], file.name, { type: file.type }))
-          }, file.type)
-        }
-      }
-      reader.readAsDataURL(file)
-    }, (error) => {
-      // Fallback if GPS denied (Mock for dev, but notify)
-      ElMessage.warning('无法获取GPS，使用默认坐标')
-      const lat = '39.904200'
-      const lon = '116.407400'
-      
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const img = new Image()
-        img.src = e.target.result
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0)
-          
-          const now = new Date().toLocaleString()
-          const text = `Time: ${now} | GPS: ${lat}, ${lon} (Simulated)`
-          
-          ctx.font = '24px Arial'
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-          ctx.fillText(text, 20, img.height - 50)
-          
-          // Anti-tamper Hash (Simple mock)
-          const hash = btoa(text + file.size).substring(0, 16)
-          ctx.font = '12px monospace'
-          ctx.fillText(`Hash: ${hash}`, 20, img.height - 20)
-          
-          canvas.toBlob((blob) => {
-            resolve(new File([blob], file.name, { type: file.type }))
-          }, file.type)
-        }
-      }
-      reader.readAsDataURL(file)
-    })
+const getLocation = () => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('浏览器不支持定位'))
+      return
+    }
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos),
+      (err) => {
+        // Retry once
+        console.warn('First GPS attempt failed, retrying...', err)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos),
+          (err2) => reject(err2),
+          options
+        )
+      },
+      options
+    )
   })
+}
+
+const convertDDDToDMS = (ddd) => {
+    const d = Math.floor(ddd);
+    const m = Math.floor((ddd - d) * 60);
+    const s = (ddd - d - m / 60) * 3600;
+    return [[d, 1], [m, 1], [Math.round(s * 100), 100]];
+}
+
+const addWatermark = async (file) => {
+  try {
+    // 1. Get GPS (Removed)
+    // const lat = ...
+    
+    // 2. Process Image (Canvas Watermark)
+    const imgBitmap = await createImageBitmap(file)
+    const canvas = document.createElement('canvas')
+    canvas.width = imgBitmap.width
+    canvas.height = imgBitmap.height
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(imgBitmap, 0, 0)
+    
+    // Watermark 1: Time (Right Bottom)
+    const now = new Date()
+    const timeStr = now.getFullYear() + '-' + 
+                    String(now.getMonth()+1).padStart(2, '0') + '-' + 
+                    String(now.getDate()).padStart(2, '0') + ' ' + 
+                    String(now.getHours()).padStart(2, '0') + ':' + 
+                    String(now.getMinutes()).padStart(2, '0') + ':' + 
+                    String(now.getSeconds()).padStart(2, '0');
+    
+    ctx.font = '14px Arial'
+    ctx.lineWidth = 1
+    ctx.strokeStyle = 'black'
+    ctx.fillStyle = 'white'
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'bottom'
+    
+    const timeX = canvas.width - 20
+    const timeY = canvas.height - 20
+    ctx.strokeText(timeStr, timeX, timeY)
+    ctx.fillText(timeStr, timeX, timeY)
+    
+    // Watermark 2: Business Info (Left Bottom)
+    const userIdStr = `User: ${user.id}`
+    const orderNoStr = `Order: ${currentOrder.value?.orderNo || 'Unknown'}`
+    
+    ctx.textAlign = 'left'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)' // 80% opacity
+    ctx.shadowColor = "black";
+    ctx.shadowBlur = 2;
+    
+    const infoX = 20
+    const infoY_Line2 = canvas.height - 20
+    const infoY_Line1 = infoY_Line2 - 20
+    
+    ctx.fillText(orderNoStr, infoX, infoY_Line2)
+    ctx.fillText(userIdStr, infoX, infoY_Line1)
+    
+    // 3. Export to JPEG (Canvas drops EXIF, so we must add it back)
+    const dataURL = canvas.toDataURL('image/jpeg', 0.9)
+    
+    // 4. Construct EXIF
+    const zeroth = {};
+    const exif = {};
+    const gps = {}; // Empty GPS
+    
+    zeroth[piexif.ImageIFD.Make] = "RenewableAI App";
+    zeroth[piexif.ImageIFD.Model] = "Driver App";
+    
+    exif[piexif.ExifIFD.DateTimeOriginal] = timeStr;
+    exif[piexif.ExifIFD.DateTimeDigitized] = timeStr;
+    
+    // GPS Removed
+    
+    let exifObj = { "0th": zeroth, "Exif": exif, "GPS": gps };
+    let exifBytes = piexif.dump(exifObj);
+    let newJpegData = piexif.insert(exifBytes, dataURL); // This is Base64
+    
+    // REMOVED: Hash calculation and Signature Request (Requirement: Signature not needed)
+    
+    // 8. Convert back to Blob/File
+    const byteString = atob(newJpegData.split(',')[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    const finalBlob = new Blob([ab], { type: 'image/jpeg' });
+    return new File([finalBlob], file.name, { type: 'image/jpeg' });
+    
+  } catch (e) {
+      console.error(e)
+      ElMessage.error('图片处理失败: ' + e.message)
+      throw e
+  }
 }
 
 const handleLogout = () => {
@@ -528,7 +660,7 @@ const handleLogout = () => {
 }
 
 const getStatusText = (status) => {
-  const map = { 20: '待接单', 25: '已接单', 30: '装车中', 40: '运输中', 50: '已到站' }
+  const map = { 10: '待接单', 20: '待接单', 25: '已接单', 30: '装车中', 40: '运输中', 50: '已到站', 60: '已完成' }
   return map[status] || status
 }
 

@@ -32,7 +32,8 @@ api.interceptors.response.use(
         localStorage.removeItem('user')
         router.push('/login')
       } else {
-        ElMessage.error(error.response.data.message || '请求失败')
+        const msg = error.response.data.message || error.response.data.error || '请求失败'
+        ElMessage.error(`${error.response.status}: ${msg}`)
       }
     }
     return Promise.reject(error)

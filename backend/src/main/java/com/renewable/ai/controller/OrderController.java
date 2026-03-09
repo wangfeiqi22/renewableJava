@@ -90,4 +90,12 @@ public class OrderController {
     public ResponseEntity<List<com.renewable.ai.entity.OrderLog>> getOrderLogs(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderService.getOrderLogs(orderId));
     }
+
+    @Autowired
+    private com.renewable.ai.repository.OrderPhotoRepository orderPhotoRepository;
+
+    @GetMapping("/{orderId}/photos")
+    public ResponseEntity<List<com.renewable.ai.entity.OrderPhoto>> getOrderPhotos(@PathVariable Long orderId) {
+        return ResponseEntity.ok(orderPhotoRepository.findByOrderId(orderId));
+    }
 }

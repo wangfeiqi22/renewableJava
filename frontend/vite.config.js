@@ -13,12 +13,15 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0',
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        // rewrite: (path) => path.replace(/^\/api/, '') // Keep /api prefix as backend expects it? 
-        // Backend Controller map to /api/..., so no rewrite needed.
+      },
+    '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
       }
     }
   }

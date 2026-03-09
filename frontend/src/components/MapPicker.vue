@@ -8,17 +8,27 @@
     :before-close="handleClose"
     class="map-picker-dialog"
   >
-    <div class="map-container">
-      <div id="amap-container" class="amap-container"></div>
-      <div class="map-controls">
+    <div class="map-container" v-loading="mapLoading" element-loading-text="地图资源加载中...">
+      <div v-if="mapError" class="map-error">
+        <el-result icon="error" title="地图加载失败" :sub-title="mapError">
+          <template #extra>
+            <el-button type="primary" @click="initMap">重试</el-button>
+            <el-button @click="handleClose">手动输入地址</el-button>
+          </template>
+        </el-result>
+      </div>
+      <div v-show="!mapError" id="amap-container" class="amap-container"></div>
+      
+      <div v-show="!mapError && !mapLoading" class="map-controls">
         <div class="search-box">
-          <el-input id="map-search-input" v-model="searchKeyword" placeholder="输入关键字搜索地址" />
+          <el-input id="map-search-input" v-model="searchKeyword" placeholder="输入关键字搜索地址" clearable />
         </div>
-        <el-button @click="recenterToCurrentLocation" class="location-btn">
-          回到我的位置
+        <el-button @click="recenterToCurrentLocation" class="location-btn" :icon="Location">
+          定位当前
         </el-button>
       </div>
-      <div class="address-display">
+      
+      <div v-show="!mapError && !mapLoading" class="address-display">
         <p><strong>当前选择地址：</strong></p>
         <p>{{ selectedAddress.formattedAddress || '请在地图上选点或搜索' }}</p>
       </div>
@@ -35,8 +45,10 @@
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted, nextTick } from 'vue';
+import { ref, watch, onUnmounted, shallowRef } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Location } from '@element-plus/icons-vue';
+import AMapLoader from '@amap/amap-jsapi-loader';
 
 const props = defineProps({
   visible: {
@@ -50,10 +62,16 @@ const emit = defineEmits(['update:visible', 'address-selected']);
 const dialogVisible = ref(props.visible);
 const searchKeyword = ref('');
 const selectedAddress = ref({});
-let map = null;
+const mapLoading = ref(false);
+const mapError = ref('');
+
+// Use shallowRef for AMap instance to improve performance
+const map = shallowRef(null);
 let marker = null;
 let geocoder = null;
 let autocomplete = null;
+let placeSearch = null;
+let AMap = null; // AMap namespace
 
 watch(() => props.visible, (newVal) => {
   dialogVisible.value = newVal;
@@ -73,6 +91,8 @@ const handleConfirm = () => {
 };
 
 const setAddress = (lnglat, addressComponent) => {
+    if (!addressComponent) return;
+    
     const { province, city, district, township, street, streetNumber } = addressComponent;
     const formattedAddress = `${province || ''}${city || ''}${district || ''}${township || ''}${street || ''}${streetNumber || ''}`;
     
@@ -84,7 +104,7 @@ const setAddress = (lnglat, addressComponent) => {
         district: district,
         street: street + (streetNumber || ''),
         formattedAddress: formattedAddress,
-        detailAddress: township, // 默认将乡镇/街道作为详细地址的起点
+        detailAddress: township, 
     };
 
     if (marker) {
@@ -92,35 +112,52 @@ const setAddress = (lnglat, addressComponent) => {
     } else {
         marker = new AMap.Marker({
             position: lnglat,
-            map: map,
+            map: map.value,
         });
     }
-    map.setCenter(lnglat);
+    map.value.setCenter(lnglat);
 };
 
 const initMap = () => {
   if (!document.querySelector("#amap-container")) return;
   
-  map = new AMap.Map('amap-container', {
-    zoom: 12,
-  });
+  mapLoading.value = true;
+  mapError.value = '';
 
-  AMap.plugin(['AMap.Geolocation', 'AMap.Geocoder', 'AMap.Autocomplete', 'AMap.PlaceSearch'], () => {
+  window._AMapSecurityConfig = {
+    securityJsCode: 'YOUR_SECURITY_JS_CODE', // TODO: 请替换为您的安全密钥
+  };
+
+  AMapLoader.load({
+    key: 'YOUR_AMAP_KEY', // TODO: 请替换为您的 Key
+    version: '2.0',
+    plugins: ['AMap.Geolocation', 'AMap.Geocoder', 'AMap.Autocomplete', 'AMap.PlaceSearch'],
+  })
+  .then((AMapNamespace) => {
+    AMap = AMapNamespace;
+    mapLoading.value = false;
+    
+    map.value = new AMap.Map('amap-container', {
+      zoom: 12,
+      resizeEnable: true
+    });
+
     // 1. Geolocation
     const geolocation = new AMap.Geolocation({
       enableHighAccuracy: true,
       timeout: 10000,
       buttonPosition: 'RB',
-      buttonOffset: new AMap.Pixel(10, 20),
+      buttonOffset: new AMap.Pixel(10, 80), // Adjust to avoid covering custom buttons
       zoomToAccuracy: true,
     });
-    map.addControl(geolocation);
+    map.value.addControl(geolocation);
     
     geolocation.getCurrentPosition((status, result) => {
       if (status === 'complete') {
         setAddress(result.position, result.addressComponent);
       } else {
-        ElMessage.error('定位失败: ' + result.message);
+        // Silent fail or minimal notify
+        console.warn('定位失败: ' + result.message);
       }
     });
 
@@ -130,7 +167,7 @@ const initMap = () => {
     });
 
     // 3. Map click event
-    map.on('click', (e) => {
+    map.value.on('click', (e) => {
       const lnglat = e.lnglat;
       geocoder.getAddress(lnglat, (status, result) => {
         if (status === 'complete' && result.regeocode) {
@@ -145,16 +182,18 @@ const initMap = () => {
     autocomplete = new AMap.Autocomplete({
       input: 'map-search-input',
     });
-    const placeSearch = new AMap.PlaceSearch({
-      map: map,
+    
+    placeSearch = new AMap.PlaceSearch({
+      map: map.value,
     });
     
     autocomplete.on('select', (e) => {
       placeSearch.setCity(e.poi.adcode);
       placeSearch.search(e.poi.name, (status, result) => {
-         if (status === 'complete' && result.poiList.length > 0) {
+         if (status === 'complete' && result.poiList && result.poiList.length > 0) {
             const poi = result.poiList[0];
             const lnglat = poi.location;
+            // PlaceSearch usually handles marker, but we want to capture address
             const addressComponent = {
                 province: poi.pname,
                 city: poi.cityname,
@@ -167,15 +206,22 @@ const initMap = () => {
          }
       });
     });
+  })
+  .catch((e) => {
+    console.error(e);
+    mapLoading.value = false;
+    mapError.value = '地图服务初始化失败，请检查网络或 API Key 配置';
   });
 };
 
 const recenterToCurrentLocation = () => {
+    if (!map.value || !AMap) return;
+    
     const geolocation = new AMap.Geolocation();
     geolocation.getCurrentPosition((status, result) => {
         if (status === 'complete') {
             setAddress(result.position, result.addressComponent);
-            map.setZoom(15);
+            map.value.setZoom(15);
         } else {
             ElMessage.error('重新定位失败: ' + result.message);
         }
@@ -183,8 +229,8 @@ const recenterToCurrentLocation = () => {
 }
 
 onUnmounted(() => {
-  if (map) {
-    map.destroy();
+  if (map.value) {
+    map.value.destroy();
   }
 });
 
@@ -194,13 +240,9 @@ onUnmounted(() => {
 .map-picker-dialog .el-dialog__body {
   padding: 0 !important;
   height: calc(100vh - 54px - 70px);
+  overflow: hidden;
 }
-.map-picker-dialog .el-dialog__header {
-    padding-bottom: 0;
-}
-.map-picker-dialog .el-dialog__footer {
-    padding-top: 10px;
-}
+/* ... rest of styles ... */
 </style>
 
 <style scoped>
@@ -208,7 +250,15 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f2f5;
 }
+.map-error {
+  text-align: center;
+}
+/* ... rest of scoped styles ... */
 .amap-container {
   width: 100%;
   height: 100%;
@@ -230,7 +280,7 @@ onUnmounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   padding: 15px;
   box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
   z-index: 10;

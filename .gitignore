@@ -1,0 +1,31 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+logs/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.trae/
+
+# Node / Frontend
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend/node_modules/
+frontend/dist/
+
+# Uploads
+uploads/
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
