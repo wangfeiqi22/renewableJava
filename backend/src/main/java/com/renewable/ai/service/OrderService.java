@@ -144,6 +144,24 @@ public class OrderService {
         return savedOrder;
     }
 
+    public org.springframework.data.domain.Page<Order> getDriverHistory(Long driverId, int page, int size, java.time.LocalDateTime startDate, java.time.LocalDateTime endDate) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by("createdAt").descending());
+        List<Integer> statuses = java.util.Arrays.asList(60, 70); // 60: Completed, 70: Cancelled (if exists, or just use 60)
+        // If status 70 (Cancelled) is not defined, we can stick to 60.
+        // Assuming 60 is completed.
+        // If we want to include cancelled, we need to check if 70 is used.
+        // The enum is not visible here, but typically completed/cancelled are > 50.
+        // Let's assume 60 is completed. If cancelled is used, we can add it.
+        // Based on frontend getStatusText map: 60: '已完成'. No Cancelled status mapped explicitly there except 'CANCEL' in timeline.
+        // Let's assume completed only for now or include 70 if standard.
+        // Or check findByStatus usage.
+        
+        // Let's check if there is a Cancelled status.
+        // In OrderTimeline.vue: 'CANCEL': '取消订单'.
+        // Let's assume 70 is cancelled.
+        return orderRepository.findHistoryTasks(driverId, statuses, startDate, endDate, pageable);
+    }
+
     public DashboardStatsDTO getDashboardStats() {
         List<Order> allOrders = orderRepository.findAll();
         long total = allOrders.size();

@@ -8,4 +8,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByCreatorId(Long creatorId);
     List<Order> findByCreatorIdOrDriverId(Long creatorId, Long driverId);
     List<Order> findByStatus(Integer status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT o FROM Order o WHERE o.driverId = :driverId AND o.status IN :statuses AND o.createdAt >= :startDate AND o.createdAt <= :endDate")
+    org.springframework.data.domain.Page<Order> findHistoryTasks(
+        @org.springframework.data.repository.query.Param("driverId") Long driverId,
+        @org.springframework.data.repository.query.Param("statuses") List<Integer> statuses,
+        @org.springframework.data.repository.query.Param("startDate") java.time.LocalDateTime startDate,
+        @org.springframework.data.repository.query.Param("endDate") java.time.LocalDateTime endDate,
+        org.springframework.data.domain.Pageable pageable
+    );
 }

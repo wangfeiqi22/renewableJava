@@ -216,7 +216,63 @@
           </div>
         </el-tab-pane>
         <el-tab-pane label="历史任务" name="history">
-          <el-empty description="暂无历史记录" />
+          <div v-if="historyError" class="empty-state">
+            <el-empty description="数据加载失败">
+              <el-button type="primary" @click="fetchHistoryTasks">重试</el-button>
+            </el-empty>
+          </div>
+          <div v-else-if="historyTasks.length === 0" class="empty-state">
+            <el-empty description="暂无历史记录" />
+          </div>
+          <div v-else class="task-list">
+             <div v-for="order in historyTasks" :key="order.id" class="task-card history-card">
+              <div class="card-header">
+                <span class="order-id">订单 #{{ order.orderNo.substring(0, 8) }}</span>
+                <el-tag type="info" effect="dark" round size="small">
+                  {{ getStatusText(order.status) }}
+                </el-tag>
+              </div>
+              
+              <div class="card-body">
+                <div class="info-row">
+                  <el-icon class="icon"><Location /></el-icon>
+                  <span class="text address">{{ order.pickupAddress }}</span>
+                </div>
+                <div class="info-row">
+                  <el-icon class="icon"><Delete /></el-icon>
+                  <span class="text">{{ getWasteTypeName(order.wasteType) }}</span>
+                  <span class="divider">|</span>
+                  <span class="text highlight">{{ order.estWeight }} kg</span>
+                </div>
+                <div class="info-row">
+                    <el-icon class="icon"><Service /></el-icon>
+                    <span class="text" style="color: #999; font-size: 12px;">{{ new Date(order.createdAt).toLocaleString() }}</span>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <el-button 
+                  type="info" 
+                  class="action-btn" 
+                  plain 
+                  @click="openDetail(order)"
+                >
+                  <el-icon><InfoFilled /></el-icon> 详情
+                </el-button>
+              </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination-container" v-if="historyTotal > historyPageSize">
+                <el-pagination
+                  v-model:current-page="historyPage"
+                  :page-size="historyPageSize"
+                  :total="historyTotal"
+                  layout="prev, pager, next"
+                  @current-change="fetchHistoryTasks"
+                />
+            </div>
+          </div>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -295,6 +351,12 @@ const user = JSON.parse(localStorage.getItem('user') || '{}')
 const activeTab = ref(user.fleetId ? 'pool' : 'create')
 const tasks = ref([])
 const poolOrders = ref([])
+const historyTasks = ref([])
+const historyLoading = ref(false)
+const historyError = ref(false)
+const historyPage = ref(1) // 1-based for UI
+const historyPageSize = ref(10)
+const historyTotal = ref(0)
 const createForm = reactive({
     shipperName: '',
     shipperPhone: '',
@@ -421,6 +483,41 @@ const fetchPoolOrders = async () => {
     poolOrders.value = res.data
   } catch (error) {
       console.error(error)
+  }
+}
+
+const fetchHistoryTasks = async () => {
+  if (historyLoading.value) return
+  historyLoading.value = true
+  historyError.value = false
+  try {
+    const endDate = new Date().toISOString()
+    const startDate = new Date(new Date().setDate(new Date().getDate() - 90)).toISOString()
+    
+    const res = await api.get('/driver/task/history', {
+      params: {
+        driverId: user.id,
+        page: historyPage.value - 1, // Convert to 0-based for API
+        pageSize: historyPageSize.value,
+        startDate,
+        endDate
+      }
+    })
+    
+    // Check if response structure is Page object (content, totalElements)
+    if (res.data && Array.isArray(res.data.content)) {
+        historyTasks.value = res.data.content
+        historyTotal.value = res.data.totalElements
+    } else {
+        // Fallback if not page object
+        historyTasks.value = []
+    }
+  } catch (error) {
+    console.error('Fetch history failed:', error)
+    historyError.value = true
+    ElMessage.error('获取历史记录失败')
+  } finally {
+    historyLoading.value = false
   }
 }
 
@@ -667,6 +764,14 @@ const getStatusText = (status) => {
 const getStatusType = (status) => {
   return status === 30 || status === 50 ? 'warning' : 'success'
 }
+
+// Watch tab change to fetch history
+import { watch } from 'vue'
+watch(activeTab, (val) => {
+    if (val === 'history') {
+        fetchHistoryTasks()
+    }
+})
 
 onMounted(() => {
   fetchTasks()
