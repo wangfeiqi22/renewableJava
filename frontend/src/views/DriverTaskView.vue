@@ -497,6 +497,7 @@ const fetchHistoryTasks = async () => {
     const res = await api.get('/driver/task/history', {
       params: {
         driverId: user.id,
+        username: user.username,
         page: historyPage.value - 1, // Convert to 0-based for API
         pageSize: historyPageSize.value,
         startDate,

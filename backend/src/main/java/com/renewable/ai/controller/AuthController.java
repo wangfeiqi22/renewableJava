@@ -28,6 +28,7 @@ public class AuthController {
         User user = userService.login(payload.get("username"), payload.get("password"));
         if (user != null) {
             String token = SecurityUtil.generateToken();
+            SecurityUtil.bindTokenToUser(token, user.getId());
             Map<String, Object> response = new java.util.HashMap<>();
             response.put("user", user);
             response.put("token", token);

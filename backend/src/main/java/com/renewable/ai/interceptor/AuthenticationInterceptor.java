@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import com.renewable.ai.util.SecurityUtil;
+
 @Component
 public class AuthenticationInterceptor implements HandlerInterceptor {
 
@@ -21,13 +23,20 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         }
 
         // In a real app, validate token with DB or JWT parser
-        // For MVP, we just check if it's not empty
+        // For MVP, we bind token -> userId on login and validate against it.
         String actualToken = token.substring(7);
         if (actualToken.isEmpty()) {
             response.setStatus(401);
             return false;
         }
 
+        Long userId = SecurityUtil.getUserIdByToken(actualToken);
+        if (userId == null) {
+            response.setStatus(401);
+            return false;
+        }
+
+        request.setAttribute("userId", userId);
         return true;
     }
 }
