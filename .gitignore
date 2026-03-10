@@ -10,7 +10,6 @@ logs/
 # IDEs
 .idea/
 *.iml
-.vscode/
 .trae/
 
 # Node / Frontend
