@@ -110,6 +110,24 @@
                 <el-radio label="B">类型B - 个人司机（免审核）</el-radio>
               </el-radio-group>
             </el-form-item>
+            <el-form-item v-if="registerForm.driverType === 'A'" label="所属车队" required>
+              <el-select
+                v-model="registerForm.fleetId"
+                placeholder="请选择要绑定的车队"
+                style="width: 100%"
+                filterable
+                :loading="fleetLoading"
+                :teleported="false"
+              >
+                <el-option
+                  v-for="f in fleetOptions"
+                  :key="f.id"
+                  :label="String(f.name || '')"
+                  :value="f.id"
+                />
+              </el-select>
+              <div v-if="registerForm.driverType === 'A' && fleetOptions.length === 0 && !fleetLoading" class="upload-tip">暂无车队，请联系管理员先创建车队</div>
+            </el-form-item>
             <el-form-item label="车牌号">
               <el-input v-model="registerForm.vehiclePlate" placeholder="如：京A88888" />
             </el-form-item>
@@ -166,7 +184,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import api from '../api'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -174,6 +192,8 @@ import { User, Lock, Iphone } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const loading = ref(false)
+const fleetOptions = ref([])
+const fleetLoading = ref(false)
 const registerForm = reactive({
   username: '',
   passwordHash: '',
@@ -186,6 +206,7 @@ const registerForm = reactive({
   contactPhone: '',
   // 司机信息
   driverType: 'B', // 默认个人司机，免审核
+  fleetId: null,   // 类型A时必选
   vehiclePlate: '',
   idNumber: '',
   driverLicenseNumber: ''
@@ -221,6 +242,41 @@ const handleDriverLicenseChange = (file, fileList) => {
   driverLicenseList.value = fileList
 }
 
+const fetchFleetOptions = async () => {
+  fleetLoading.value = true
+  try {
+    // 使用与“站点运力”相同的接口，后端已允许未登录 GET /api/fleets
+    const res = await api.get('/fleets')
+    const raw = res.data
+    // 兼容直接数组或 { content: [] } 等结构，并统一为 { id, name }
+    const list = Array.isArray(raw) ? raw : (raw && raw.content) ? raw.content : []
+    fleetOptions.value = list.map(f => ({
+      id: f.id != null ? Number(f.id) : f.id,
+      name: f.name != null ? String(f.name) : ''
+    })).filter(f => f.id != null)
+  } catch (e) {
+    console.error('Fetch fleets failed:', e)
+    fleetOptions.value = []
+  } finally {
+    fleetLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchFleetOptions()
+})
+
+watch(() => [registerForm.role, registerForm.driverType], ([role, driverType]) => {
+  if (role !== 'driver' || driverType !== 'A') {
+    registerForm.fleetId = null
+  } else {
+    // 切换到“类型A-车队司机”时确保有车队数据
+    if (fleetOptions.value.length === 0 && !fleetLoading.value) {
+      fetchFleetOptions()
+    }
+  }
+}, { immediate: true })
+
 const handleRegister = async () => {
   if (!registerForm.username || !registerForm.passwordHash || !registerForm.phone) {
     ElMessage.warning('请填写用户名、密码和手机号')
@@ -239,6 +295,10 @@ const handleRegister = async () => {
     }
   }
   if (registerForm.role === 'driver') {
+    if (registerForm.driverType === 'A' && !registerForm.fleetId) {
+      ElMessage.warning('类型A-车队司机请选择所属车队')
+      return
+    }
     if (!registerForm.vehiclePlate || !registerForm.idNumber || !registerForm.driverLicenseNumber) {
       ElMessage.warning('请完整填写司机车辆和证件信息')
       return
@@ -262,6 +322,7 @@ const handleRegister = async () => {
       contactName: registerForm.contactName,
       contactPhone: registerForm.contactPhone,
       driverType: registerForm.driverType,
+      fleetId: registerForm.driverType === 'A' ? registerForm.fleetId : null,
       vehiclePlate: registerForm.vehiclePlate,
       idNumber: registerForm.idNumber,
       driverLicenseNumber: registerForm.driverLicenseNumber

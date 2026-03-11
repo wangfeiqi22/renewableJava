@@ -15,6 +15,11 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         if (request.getMethod().equals("OPTIONS")) {
             return true;
         }
+        // 注册页“所属车队”下拉需要车队列表，未登录也可访问（仅 GET 列表，不含 /api/fleets/xxx）
+        String uri = request.getRequestURI();
+        if ("GET".equals(request.getMethod()) && uri != null && uri.endsWith("/api/fleets") && !uri.contains("/api/fleets/")) {
+            return true;
+        }
 
         String token = request.getHeader("Authorization");
         if (token == null || !token.startsWith("Bearer ")) {

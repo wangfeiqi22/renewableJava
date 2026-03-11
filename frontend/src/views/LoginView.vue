@@ -41,7 +41,7 @@
              <el-button type="success" plain class="btn-block" @click="router.push('/mall')">进入商城 (无需登录)</el-button>
           </el-form-item>
           <div class="form-footer">
-            <router-link to="/register" class="link">注册新账号</router-link>
+            <a href="/register" class="link" @click.prevent="router.push('/register')">注册新账号</a>
             <span class="divider">|</span>
             <a href="#" class="link">忘记密码?</a>
           </div>

@@ -26,7 +26,11 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authenticationInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/**");
+                .excludePathPatterns(
+                        "/api/auth/**",
+                        // 注册页“所属车队”下拉需要（无需登录）
+                        "/api/fleets/**"
+                );
     }
 
     @Override

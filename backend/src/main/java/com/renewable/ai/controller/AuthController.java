@@ -1,12 +1,15 @@
 package com.renewable.ai.controller;
 
 import com.renewable.ai.entity.User;
+import com.renewable.ai.entity.Fleet;
 import com.renewable.ai.service.UserService;
 import com.renewable.ai.service.FileStorageService;
+import com.renewable.ai.service.FleetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.MediaType;
@@ -24,6 +27,15 @@ public class AuthController {
 
     @Autowired
     private FileStorageService fileStorageService;
+
+    @Autowired
+    private FleetService fleetService;
+
+    /** 注册时“类型A-车队司机”需选择车队，此接口供下拉列表使用（无需登录） */
+    @GetMapping("/fleets-options")
+    public ResponseEntity<List<Fleet>> fleetsOptions() {
+        return ResponseEntity.ok(fleetService.getAllFleets());
+    }
 
     @PostMapping("/register")
     public ResponseEntity<User> register(@RequestBody User user) {

@@ -5,6 +5,7 @@ import com.renewable.ai.service.StationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class StationController {
      * 清运站管理员获取自己负责的站点信息。
      */
     @GetMapping("/me")
-    public ResponseEntity<Station> getMyStation(javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<Station> getMyStation(HttpServletRequest request) {
         Object uidAttr = request.getAttribute("userId");
         if (!(uidAttr instanceof Long)) {
             return ResponseEntity.status(401).build();
@@ -68,7 +69,7 @@ public class StationController {
      */
     @PutMapping("/me/profile")
     public ResponseEntity<Station> updateMyStationProfile(@RequestBody Map<String, String> payload,
-                                                          javax.servlet.http.HttpServletRequest request) {
+                                                          HttpServletRequest request) {
         Object uidAttr = request.getAttribute("userId");
         if (!(uidAttr instanceof Long)) {
             return ResponseEntity.status(401).build();
