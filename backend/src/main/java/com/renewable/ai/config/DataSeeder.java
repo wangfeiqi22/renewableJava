@@ -73,11 +73,13 @@ public class DataSeeder {
             });
             
             // 2.2 Init Station Admin
+            final Long[] stationAdminIdHolder = new Long[1];
             userRepository.findByUsername("station1").ifPresentOrElse(existing -> {
                 if (existing.getStatus() == null || existing.getStatus() != 1) {
                     existing.setStatus(1);
                     userRepository.save(existing);
                 }
+                stationAdminIdHolder[0] = existing.getId();
             }, () -> {
                 User station = new User();
                 station.setUsername("station1");
@@ -85,7 +87,8 @@ public class DataSeeder {
                 station.setRole("station");
                 station.setPhone("13900000003");
                 station.setStatus(1);
-                userRepository.save(station);
+                User saved = userRepository.save(station);
+                stationAdminIdHolder[0] = saved.getId();
                 System.out.println("Initialized Station Admin: station1 / 123456");
             });
 
@@ -131,6 +134,9 @@ public class DataSeeder {
                 s1.setAddress("北京市朝阳区xx路88号");
                 s1.setLat(new BigDecimal("39.9042"));
                 s1.setLon(new BigDecimal("116.4074"));
+                if (stationAdminIdHolder[0] != null) {
+                    s1.setManagerId(stationAdminIdHolder[0]);
+                }
                 stationRepository.save(s1);
 
                 Station s2 = new Station();

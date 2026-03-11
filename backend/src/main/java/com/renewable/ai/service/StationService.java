@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class StationService {
@@ -23,6 +25,35 @@ public class StationService {
 
     public List<Station> getStationsByType(Integer type) {
         return stationRepository.findByType(type);
+    }
+
+    public Optional<Station> getStationById(Long id) {
+        return stationRepository.findById(id);
+    }
+
+    public Optional<Station> getStationByManagerId(Long managerId) {
+        List<Station> list = stationRepository.findByManagerId(managerId);
+        if (list == null || list.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(list.get(0));
+    }
+
+    public Station updateStationProfile(Long id, Map<String, String> payload) {
+        Station station = stationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Station not found"));
+
+        if (payload.containsKey("announcement")) {
+            station.setAnnouncement(payload.get("announcement"));
+        }
+        if (payload.containsKey("description")) {
+            station.setDescription(payload.get("description"));
+        }
+        if (payload.containsKey("inventorySummary")) {
+            station.setInventorySummary(payload.get("inventorySummary"));
+        }
+
+        return stationRepository.save(station);
     }
 
     // Basic Euclidean distance (Mock for MVP)

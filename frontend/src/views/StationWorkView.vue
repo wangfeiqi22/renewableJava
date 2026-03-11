@@ -82,6 +82,46 @@
         </el-col>
       </el-row>
 
+      <!-- Station Profile / Announcement -->
+      <el-row :gutter="20" style="margin-top: 20px;">
+        <el-col :span="24">
+          <el-card class="box-card">
+            <template #header>
+              <div class="card-header">
+                <span>站点信息与公告维护</span>
+                <el-button type="primary" size="small" @click="saveProfile" :loading="profileSaving">保存</el-button>
+              </div>
+            </template>
+            <el-form :model="stationProfile" label-width="80px">
+              <el-form-item label="公告">
+                <el-input
+                  v-model="stationProfile.announcement"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="如：营业时间、临时停运公告等"
+                />
+              </el-form-item>
+              <el-form-item label="介绍">
+                <el-input
+                  v-model="stationProfile.description"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="简要介绍本站点的服务范围、处理能力等"
+                />
+              </el-form-item>
+              <el-form-item label="库存概况">
+                <el-input
+                  v-model="stationProfile.inventorySummary"
+                  type="textarea"
+                  :rows="3"
+                  placeholder="例如：再生骨料 120 吨、金属压块 30 吨等"
+                />
+              </el-form-item>
+            </el-form>
+          </el-card>
+        </el-col>
+      </el-row>
+
       <!-- Weigh In Dialog -->
       <el-dialog v-model="weighDialogVisible" title="车辆称重" width="400px">
         <el-form :model="weighForm">
@@ -147,6 +187,13 @@ const detailLoading = ref(false)
 const currentLogs = ref([])
 const currentPhotos = ref([])
 
+const stationProfile = reactive({
+  announcement: '',
+  description: '',
+  inventorySummary: ''
+})
+const profileSaving = ref(false)
+
 const getWasteTypeName = (val) => {
   const normalizedVal = val ? val.toString().toUpperCase() : ''
 
@@ -178,6 +225,37 @@ const fetchHistory = async () => {
     historyOrders.value = res.data
   } catch (error) {
     console.error(error)
+  }
+}
+
+const fetchProfile = async () => {
+  try {
+    const res = await api.get('/stations/me')
+    if (res.data) {
+      stationProfile.announcement = res.data.announcement || ''
+      stationProfile.description = res.data.description || ''
+      stationProfile.inventorySummary = res.data.inventorySummary || ''
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const saveProfile = async () => {
+  if (profileSaving.value) return
+  profileSaving.value = true
+  try {
+    await api.put('/stations/me/profile', {
+      announcement: stationProfile.announcement,
+      description: stationProfile.description,
+      inventorySummary: stationProfile.inventorySummary
+    })
+    ElMessage.success('站点信息已保存')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('保存失败')
+  } finally {
+    profileSaving.value = false
   }
 }
 
@@ -243,6 +321,7 @@ const handleLogout = () => {
 onMounted(() => {
   fetchIncoming()
   fetchHistory()
+  fetchProfile()
 })
 </script>
 

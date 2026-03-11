@@ -12,7 +12,7 @@
     </div>
 
     <div class="main-content">
-      <el-tabs v-model="activeTab" class="custom-tabs" stretch>
+      <el-tabs v-model="activeTab" class="custom-tabs" stretch @tab-change="handleTabChange">
         <!-- For Fleet Drivers (Type A): Order Pool -->
         <el-tab-pane v-if="user.fleetId" label="抢单大厅" name="pool">
              <div v-if="poolOrders.length === 0" class="empty-state">
@@ -274,6 +274,37 @@
             </div>
           </div>
         </el-tab-pane>
+
+        <el-tab-pane label="清运站" name="stations">
+          <div v-if="stations.length === 0" class="empty-state">
+            <el-empty description="暂无清运站信息" />
+          </div>
+          <div v-else class="station-list">
+            <div
+              v-for="s in stations"
+              :key="s.id"
+              class="station-card"
+              @click="openStationDetail(s)"
+            >
+              <div class="station-header">
+                <span class="station-name">{{ s.name }}</span>
+                <el-tag size="small" :type="s.type === 1 ? 'success' : 'warning'">
+                  {{ s.type === 1 ? '清运站' : '中转站' }}
+                </el-tag>
+              </div>
+              <div class="station-body">
+                <div class="info-row">
+                  <el-icon class="icon"><Location /></el-icon>
+                  <span class="text">{{ s.address || '未配置地址' }}</span>
+                </div>
+                <div v-if="s.inventorySummary" class="info-row">
+                  <el-icon class="icon"><Delete /></el-icon>
+                  <span class="text">{{ s.inventorySummary }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -334,7 +365,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import api from '../api'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -351,6 +382,7 @@ const user = JSON.parse(localStorage.getItem('user') || '{}')
 const activeTab = ref(user.fleetId ? 'pool' : 'create')
 const tasks = ref([])
 const poolOrders = ref([])
+const stations = ref([])
 const historyTasks = ref([])
 const historyLoading = ref(false)
 const historyError = ref(false)
@@ -482,7 +514,16 @@ const fetchPoolOrders = async () => {
     const res = await api.get('/orders/pool')
     poolOrders.value = res.data
   } catch (error) {
-      console.error(error)
+    console.error(error)
+  }
+}
+
+const fetchStations = async () => {
+  try {
+    const res = await api.get('/stations')
+    stations.value = res.data || []
+  } catch (e) {
+    console.error('Fetch stations failed:', e)
   }
 }
 
@@ -766,17 +807,24 @@ const getStatusType = (status) => {
   return status === 30 || status === 50 ? 'warning' : 'success'
 }
 
-// Watch tab change to fetch history
-import { watch } from 'vue'
-watch(activeTab, (val) => {
-    if (val === 'history') {
-        fetchHistoryTasks()
-    }
-})
+const openStationDetail = (station) => {
+  // 复用订单详情弹窗结构，简单弹出站点详情信息
+  ElMessage.info(`清运站：${station.name}\n地址：${station.address || '未配置地址'}\n公告：${station.announcement || '暂无'}\n库存：${station.inventorySummary || '暂无'}`)
+}
+
+const handleTabChange = (name) => {
+  activeTab.value = name
+  if (name === 'history') {
+    fetchHistoryTasks()
+  } else if (name === 'stations') {
+    fetchStations()
+  }
+}
 
 onMounted(() => {
   fetchTasks()
   fetchPoolOrders()
+  fetchStations()
 })
 </script>
 
@@ -837,6 +885,40 @@ onMounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 10px;
+}
+
+.station-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.station-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.station-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.station-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.station-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
 }
 
 .task-list {

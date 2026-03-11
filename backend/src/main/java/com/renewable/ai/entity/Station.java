@@ -29,6 +29,17 @@ public class Station {
     @Column(name = "region_code")
     private String regionCode;
 
+    // 公告与介绍
+    @Column(length = 1000)
+    private String announcement; // 清运公告，如营业时间/临时通知等
+
+    @Column(length = 2000)
+    private String description; // 站点介绍、服务说明
+
+    // 简要库存概况（文本），用于司机/上游快速了解
+    @Column(length = 1000)
+    private String inventorySummary;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

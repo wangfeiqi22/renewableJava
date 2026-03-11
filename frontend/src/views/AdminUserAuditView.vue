@@ -205,6 +205,112 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.admin-container {
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+.admin-header {
+  background: white;
+  height: 64px;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.nav-links {
+  display: flex;
+  gap: 24px;
+}
+
+.nav-item {
+  color: #606266;
+  text-decoration: none;
+  font-size: 14px;
+  padding: 8px 0;
+  position: relative;
+  transition: color 0.3s;
+}
+
+.nav-item:hover, .nav-item.active {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-primary);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.action-btn {
+  font-size: 20px;
+  cursor: pointer;
+  color: #909399;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.admin-main {
+  padding: 24px;
+}
+
+.content-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  min-height: 600px;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.table-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #303133;
+}
+
 .doc-links {
   display: flex;
   align-items: center;
