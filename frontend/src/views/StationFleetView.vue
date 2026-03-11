@@ -11,6 +11,7 @@
           <router-link to="/admin/dashboard" class="nav-item">概览</router-link>
           <router-link to="/admin/sf" class="nav-item active">站点运力</router-link>
           <router-link to="/admin/kb" class="nav-item">知识库</router-link>
+          <router-link to="/admin/users" class="nav-item">人员审核</router-link>
         </nav>
       </div>
       <div class="header-right">

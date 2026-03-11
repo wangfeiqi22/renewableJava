@@ -19,19 +19,34 @@ public class UserService {
             throw new RegistrationException("用户名已存在");
         }
 
-        // Set user status based on role
-        switch (user.getRole()) {
+        // Set user status based on role & driver type
+        String role = user.getRole();
+        if (role == null) {
+            role = "individual";
+            user.setRole(role);
+        }
+
+        switch (role) {
+            // 企业 / 管理类用户：需要审核
             case "property":
             case "street":
             case "station":
             case "fleet":
-                user.setStatus(0); // 0: Pending for audit
+                user.setStatus(0); // Pending
+                break;
+            case "driver":
+                // 司机：类型A（车队司机）需要审核，类型B（个人司机）免审核
+                if ("A".equalsIgnoreCase(user.getDriverType())) {
+                    user.setStatus(0);
+                } else {
+                    user.setStatus(1);
+                }
                 break;
             case "individual":
-            case "driver":
             case "vip":
             default:
-                user.setStatus(1); // 1: Active
+                // 个体户 / 个人类账号：默认直接启用
+                user.setStatus(1);
                 break;
         }
 
@@ -40,8 +55,23 @@ public class UserService {
     }
 
     public User login(String username, String password) {
-        return userRepository.findByUsername(username)
+        User user = userRepository.findByUsername(username)
                 .filter(u -> SecurityUtil.verifyPassword(password, u.getPasswordHash()))
                 .orElse(null);
+
+        if (user == null) {
+            return null;
+        }
+
+        // 超级管理员账号不受审核状态限制
+        if ("admin".equalsIgnoreCase(user.getRole())) {
+            return user;
+        }
+
+        if (user.getStatus() == null || user.getStatus() != 1) {
+            throw new RuntimeException("账号未审核通过或已被禁用，请联系管理员处理");
+        }
+
+        return user;
     }
 }

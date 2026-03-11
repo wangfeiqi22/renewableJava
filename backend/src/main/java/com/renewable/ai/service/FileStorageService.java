@@ -39,6 +39,32 @@ public class FileStorageService {
         }
     }
 
+    /**
+     * 通用文档/附件存储（不做 EXIF 和联单校验），用于用户注册资料等。
+     * 返回可直接用于前端访问的相对 URL（以 /uploads 开头）。
+     */
+    public String storeUserDocument(MultipartFile file, String category) {
+        try {
+            if (file == null || file.isEmpty()) {
+                throw new RuntimeException("Failed to store empty file.");
+            }
+            String safeCategory = (category == null || category.isBlank()) ? "user-docs" : "user-docs/" + category;
+            Path dir = this.rootLocation.resolve(safeCategory);
+            Files.createDirectories(dir);
+
+            String filename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            Path destinationFile = dir.resolve(filename);
+            try (java.io.InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, destinationFile);
+            }
+
+            String urlPath = (safeCategory + "/" + filename).replace("\\", "/");
+            return "/uploads/" + urlPath;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store user document: " + e.getMessage(), e);
+        }
+    }
+
     public OrderPhoto storeFile(MultipartFile file, Long orderId, String nodeType) {
         try {
             if (file.isEmpty()) {

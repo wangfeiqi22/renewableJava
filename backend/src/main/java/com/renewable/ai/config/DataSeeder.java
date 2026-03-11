@@ -20,72 +20,108 @@ public class DataSeeder {
                                    KnowledgeBaseRepository kbRepository) {
         return args -> {
             // 1. Init Admin User
-            if (userRepository.findByUsername("admin").isEmpty()) {
+            userRepository.findByUsername("admin").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
                 User admin = new User();
                 admin.setUsername("admin");
                 admin.setPasswordHash(SecurityUtil.hashPassword("admin123"));
                 admin.setRole("admin");
                 admin.setPhone("13800000000");
+                admin.setStatus(1); // Admin always active
                 userRepository.save(admin);
                 System.out.println("Initialized Admin User: admin / admin123");
-            }
+            });
             
             // 2. Init Fleet Driver User
-            if (userRepository.findByUsername("driver1").isEmpty()) {
+            userRepository.findByUsername("driver1").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
                 User driver = new User();
                 driver.setUsername("driver1");
                 driver.setPasswordHash(SecurityUtil.hashPassword("123456"));
                 driver.setRole("driver");
                 driver.setPhone("13900000001");
                 driver.setFleetId(1L); // Belongs to Fleet 1
+                driver.setStatus(1);
                 userRepository.save(driver);
                 System.out.println("Initialized Fleet Driver: driver1 / 123456 (Fleet 1)");
-            }
+            });
             
             // 2.1 Init Freelance Driver User
-            if (userRepository.findByUsername("driver2").isEmpty()) {
+            userRepository.findByUsername("driver2").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
                 User driver = new User();
                 driver.setUsername("driver2");
                 driver.setPasswordHash(SecurityUtil.hashPassword("123456"));
                 driver.setRole("driver");
                 driver.setPhone("13900000002");
                 driver.setFleetId(null); // Freelance
+                driver.setStatus(1);
                 userRepository.save(driver);
                 System.out.println("Initialized Freelance Driver: driver2 / 123456");
-            }
+            });
             
             // 2.2 Init Station Admin
-            if (userRepository.findByUsername("station1").isEmpty()) {
+            userRepository.findByUsername("station1").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
                 User station = new User();
                 station.setUsername("station1");
                 station.setPasswordHash(SecurityUtil.hashPassword("123456"));
                 station.setRole("station");
                 station.setPhone("13900000003");
+                station.setStatus(1);
                 userRepository.save(station);
                 System.out.println("Initialized Station Admin: station1 / 123456");
-            }
+            });
 
             // 3. Init Individual User
-            if (userRepository.findByUsername("user1").isEmpty()) {
+            userRepository.findByUsername("user1").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
                 User user = new User();
                 user.setUsername("user1");
                 user.setPasswordHash(SecurityUtil.hashPassword("123456"));
                 user.setRole("individual");
                 user.setPhone("13700000002");
+                user.setStatus(1);
                 userRepository.save(user);
                 System.out.println("Initialized Individual User: user1 / 123456");
-            }
+            });
 
             // 3.1 Init Property Manager
-            if (userRepository.findByUsername("prop1").isEmpty()) {
+            userRepository.findByUsername("prop1").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
                 User prop = new User();
                 prop.setUsername("prop1");
                 prop.setPasswordHash(SecurityUtil.hashPassword("123456"));
                 prop.setRole("property");
                 prop.setPhone("13600000003");
+                prop.setStatus(1);
                 userRepository.save(prop);
                 System.out.println("Initialized Property Manager: prop1 / 123456");
-            }
+            });
 
             // 4. Init Stations
             if (stationRepository.count() == 0) {

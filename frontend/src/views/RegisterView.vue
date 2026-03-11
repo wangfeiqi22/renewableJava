@@ -35,16 +35,117 @@
               class="input-field"
             />
           </el-form-item>
-          <el-form-item label="角色">
+          <el-form-item label="角色类型">
             <el-select v-model="registerForm.role" placeholder="请选择您的角色" class="input-field" style="width: 100%">
-              <el-option label="个人/VIP客户" value="vip"></el-option>
-              <el-option label="物业" value="property"></el-option>
-              <el-option label="街道办" value="street"></el-option>
-              <el-option label="清运站" value="station"></el-option>
-              <el-option label="车队" value="fleet"></el-option>
+              <el-option label="个人/商户（免审核）" value="vip"></el-option>
+              <el-option label="物业公司（需审核）" value="property"></el-option>
+              <el-option label="街道办（需审核）" value="street"></el-option>
+              <el-option label="清运站管理员（需审核）" value="station"></el-option>
+              <el-option label="车队管理员（需审核）" value="fleet"></el-option>
               <el-option label="司机" value="driver"></el-option>
             </el-select>
           </el-form-item>
+
+          <!-- 企业 / 清运站类注册信息 -->
+          <template v-if="['property','street','station','fleet'].includes(registerForm.role)">
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+              description="企业、清运站和车队账号需提交完整资料并等待管理员审核通过后方可登录系统。"
+              style="margin-bottom: 12px;"
+            />
+            <el-form-item label="单位名称">
+              <el-input v-model="registerForm.companyName" placeholder="请输入企业/机构名称" />
+            </el-form-item>
+            <el-form-item label="联系人姓名">
+              <el-input v-model="registerForm.contactName" placeholder="请输入联系人姓名" />
+            </el-form-item>
+            <el-form-item label="联系人电话">
+              <el-input v-model="registerForm.contactPhone" placeholder="请输入联系人电话" />
+            </el-form-item>
+            <el-form-item label="单位地址">
+              <el-input v-model="registerForm.address" placeholder="请输入详细地址" />
+            </el-form-item>
+            <el-form-item label="营业执照扫描件">
+              <el-upload
+                class="upload-block"
+                :auto-upload="false"
+                :limit="1"
+                :file-list="businessLicenseList"
+                :on-change="handleBusinessLicenseChange"
+                accept=".jpg,.jpeg,.png,.pdf"
+              >
+                <el-button type="primary" plain>上传营业执照</el-button>
+                <div class="upload-tip">支持 JPG/PNG/PDF，清晰无遮挡</div>
+              </el-upload>
+            </el-form-item>
+            <el-form-item label="法人身份证扫描件">
+              <el-upload
+                class="upload-block"
+                :auto-upload="false"
+                :limit="1"
+                :file-list="companyIdCardList"
+                :on-change="handleCompanyIdCardChange"
+                accept=".jpg,.jpeg,.png,.pdf"
+              >
+                <el-button type="primary" plain>上传身份证</el-button>
+                <div class="upload-tip">请上传法人身份证正反面扫描件</div>
+              </el-upload>
+            </el-form-item>
+          </template>
+
+          <!-- 司机注册信息 -->
+          <template v-if="registerForm.role === 'driver'">
+            <el-alert
+              type="info"
+              :closable="false"
+              show-icon
+              description="类型A-车队司机需要管理员审核后才能登录；类型B-个人司机注册后可直接使用。"
+              style="margin-bottom: 12px;"
+            />
+            <el-form-item label="司机类型">
+              <el-radio-group v-model="registerForm.driverType">
+                <el-radio label="A">类型A - 车队绑定司机（需审核）</el-radio>
+                <el-radio label="B">类型B - 个人司机（免审核）</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="车牌号">
+              <el-input v-model="registerForm.vehiclePlate" placeholder="如：京A88888" />
+            </el-form-item>
+            <el-form-item label="身份证号">
+              <el-input v-model="registerForm.idNumber" placeholder="请输入身份证号" />
+            </el-form-item>
+            <el-form-item label="驾驶证号">
+              <el-input v-model="registerForm.driverLicenseNumber" placeholder="请输入驾驶证号" />
+            </el-form-item>
+            <el-form-item label="身份证扫描件">
+              <el-upload
+                class="upload-block"
+                :auto-upload="false"
+                :limit="1"
+                :file-list="driverIdCardList"
+                :on-change="handleDriverIdCardChange"
+                accept=".jpg,.jpeg,.png,.pdf"
+              >
+                <el-button type="primary" plain>上传身份证</el-button>
+                <div class="upload-tip">请上传本人身份证正反面扫描件</div>
+              </el-upload>
+            </el-form-item>
+            <el-form-item label="驾驶证扫描件">
+              <el-upload
+                class="upload-block"
+                :auto-upload="false"
+                :limit="1"
+                :file-list="driverLicenseList"
+                :on-change="handleDriverLicenseChange"
+                accept=".jpg,.jpeg,.png,.pdf"
+              >
+                <el-button type="primary" plain>上传驾驶证</el-button>
+                <div class="upload-tip">请上传本人驾驶证扫描件</div>
+              </el-upload>
+            </el-form-item>
+          </template>
           <el-form-item>
             <el-button 
               type="primary" 
@@ -77,20 +178,119 @@ const registerForm = reactive({
   username: '',
   passwordHash: '',
   phone: '',
-  role: 'individual'
+  role: 'vip',
+  // 企业 / 站点信息
+  companyName: '',
+  address: '',
+  contactName: '',
+  contactPhone: '',
+  // 司机信息
+  driverType: 'B', // 默认个人司机，免审核
+  vehiclePlate: '',
+  idNumber: '',
+  driverLicenseNumber: ''
 })
+
+// 附件上传状态
+const businessLicense = ref(null)
+const businessLicenseList = ref([])
+const companyIdCard = ref(null)
+const companyIdCardList = ref([])
+const driverIdCard = ref(null)
+const driverIdCardList = ref([])
+const driverLicense = ref(null)
+const driverLicenseList = ref([])
+
+const handleBusinessLicenseChange = (file, fileList) => {
+  businessLicense.value = file.raw
+  businessLicenseList.value = fileList
+}
+
+const handleCompanyIdCardChange = (file, fileList) => {
+  companyIdCard.value = file.raw
+  companyIdCardList.value = fileList
+}
+
+const handleDriverIdCardChange = (file, fileList) => {
+  driverIdCard.value = file.raw
+  driverIdCardList.value = fileList
+}
+
+const handleDriverLicenseChange = (file, fileList) => {
+  driverLicense.value = file.raw
+  driverLicenseList.value = fileList
+}
 
 const handleRegister = async () => {
   if (!registerForm.username || !registerForm.passwordHash || !registerForm.phone) {
-    ElMessage.warning('请填写所有必填项')
+    ElMessage.warning('请填写用户名、密码和手机号')
     return
+  }
+
+  // 简单必填校验（不同角色）
+  if (['property','street','station','fleet'].includes(registerForm.role)) {
+    if (!registerForm.companyName || !registerForm.contactName || !registerForm.contactPhone) {
+      ElMessage.warning('请完整填写单位名称和联系人信息')
+      return
+    }
+    if (!businessLicense.value || !companyIdCard.value) {
+      ElMessage.warning('请上传营业执照和法人身份证扫描件')
+      return
+    }
+  }
+  if (registerForm.role === 'driver') {
+    if (!registerForm.vehiclePlate || !registerForm.idNumber || !registerForm.driverLicenseNumber) {
+      ElMessage.warning('请完整填写司机车辆和证件信息')
+      return
+    }
+    if (!driverIdCard.value || !driverLicense.value) {
+      ElMessage.warning('请上传身份证和驾驶证扫描件')
+      return
+    }
   }
 
   loading.value = true
   try {
-    const res = await api.post('/auth/register', registerForm)
+    // 仅选择需要提交到后端的字段构造 user 对象
+    const userPayload = {
+      username: registerForm.username,
+      passwordHash: registerForm.passwordHash,
+      phone: registerForm.phone,
+      role: registerForm.role,
+      companyName: registerForm.companyName,
+      address: registerForm.address,
+      contactName: registerForm.contactName,
+      contactPhone: registerForm.contactPhone,
+      driverType: registerForm.driverType,
+      vehiclePlate: registerForm.vehiclePlate,
+      idNumber: registerForm.idNumber,
+      driverLicenseNumber: registerForm.driverLicenseNumber
+    }
+
+    const formData = new FormData()
+    formData.append(
+      'user',
+      new Blob([JSON.stringify(userPayload)], { type: 'application/json' })
+    )
+
+    if (businessLicense.value) {
+      formData.append('businessLicense', businessLicense.value)
+    }
+    if (companyIdCard.value) {
+      formData.append('companyIdCard', companyIdCard.value)
+    }
+    if (driverIdCard.value) {
+      formData.append('driverIdCard', driverIdCard.value)
+    }
+    if (driverLicense.value) {
+      formData.append('driverLicense', driverLicense.value)
+    }
+
+    const res = await api.post('/auth/register-with-docs', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
     if (res.status === 200) {
-      ElMessage.success('注册成功！部分角色需要等待管理员审核。')
+      ElMessage.success('注册成功！部分角色需要等待管理员审核后才能登录。')
       router.push('/login')
     }
   } catch (error) {

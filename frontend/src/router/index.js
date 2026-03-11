@@ -7,6 +7,7 @@ import AdminDashboardView from '../views/AdminDashboardView.vue'
 import KnowledgeBaseView from '../views/KnowledgeBaseView.vue'
 import StationFleetView from '../views/StationFleetView.vue'
 import DriverTaskView from '../views/DriverTaskView.vue'
+import AdminUserAuditView from '../views/AdminUserAuditView.vue'
 
 const routes = [
   {
@@ -47,6 +48,11 @@ const routes = [
     path: '/admin/sf',
     name: 'StationFleet',
     component: StationFleetView
+  },
+  {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: AdminUserAuditView
   },
   {
     path: '/driver/tasks',

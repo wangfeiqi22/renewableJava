@@ -26,6 +26,32 @@ public class User {
 
     private Integer status = 0; // 0: Pending, 1: Active, 2: Rejected, 3: Disabled
 
+    // ====== Registration details (for audit & profile) ======
+    // 企业/站点类用户
+    private String companyName;
+    private String address;
+    private String contactName;
+    private String contactPhone;
+
+    // 司机类用户
+    // driverType: A - 车队司机, B - 个人司机
+    private String driverType;
+    private String vehiclePlate;
+    private String idNumber;
+    private String driverLicenseNumber;
+
+    // 资质附件（URL）
+    // 企业/站点：营业执照 & 法人身份证
+    private String companyLicenseUrl;
+    private String companyLegalIdCardUrl;
+
+    // 司机：身份证 & 驾驶证扫描件
+    private String driverIdCardUrl;
+    private String driverLicenseUrl;
+
+    // 审核备注（驳回原因等）
+    private String auditRemark;
+
     private String avatarUrl;
 
     @Column(name = "created_at")

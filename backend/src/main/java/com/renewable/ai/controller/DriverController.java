@@ -49,21 +49,31 @@ public class DriverController {
             start = end.minusDays(90);
         }
 
-        Long resolvedDriverId = driverId;
-        if (resolvedDriverId == null && username != null && !username.isBlank()) {
-            resolvedDriverId = userRepository.findByUsername(username)
-                    .map(com.renewable.ai.entity.User::getId)
-                    .orElse(null);
-        }
-
+        // Auth: drivers can only query their own history; admin can query any driver by id/username.
         Long tokenUserId = null;
         Object tokenUserIdAttr = request.getAttribute("userId");
         if (tokenUserIdAttr instanceof Long) tokenUserId = (Long) tokenUserIdAttr;
+        if (tokenUserId == null) {
+            throw new RuntimeException("Unauthorized");
+        }
 
-        if (tokenUserId != null) {
+        com.renewable.ai.entity.User me = userRepository.findById(tokenUserId)
+                .orElseThrow(() -> new RuntimeException("Unauthorized"));
+
+        Long resolvedDriverId = null;
+        if ("admin".equalsIgnoreCase(me.getRole())) {
+            resolvedDriverId = driverId;
+            if (resolvedDriverId == null && username != null && !username.isBlank()) {
+                resolvedDriverId = userRepository.findByUsername(username)
+                        .map(com.renewable.ai.entity.User::getId)
+                        .orElse(null);
+            }
+            if (resolvedDriverId == null) {
+                throw new RuntimeException("driverId or username is required");
+            }
+        } else {
+            // non-admin always uses token userId
             resolvedDriverId = tokenUserId;
-        } else if (resolvedDriverId == null) {
-            throw new RuntimeException("driverId or username is required");
         }
 
         return ResponseEntity.ok(orderService.getDriverHistory(resolvedDriverId, page, pageSize, start, end));

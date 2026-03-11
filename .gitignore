@@ -7,6 +7,10 @@ target/
 *.log
 logs/
 
+# Local dev database
+backend/data/
+data/
+
 # IDEs
 .idea/
 *.iml
