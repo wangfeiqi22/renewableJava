@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import com.renewable.ai.entity.User;
 import com.renewable.ai.util.SecurityUtil;
 
 @Component
@@ -15,7 +16,7 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         if (request.getMethod().equals("OPTIONS")) {
             return true;
         }
-        // 注册页“所属车队”下拉需要车队列表，未登录也可访问（仅 GET 列表，不含 /api/fleets/xxx）
+        
         String uri = request.getRequestURI();
         if ("GET".equals(request.getMethod()) && uri != null && uri.endsWith("/api/fleets") && !uri.contains("/api/fleets/")) {
             return true;
@@ -27,8 +28,6 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // In a real app, validate token with DB or JWT parser
-        // For MVP, we bind token -> userId on login and validate against it.
         String actualToken = token.substring(7);
         if (actualToken.isEmpty()) {
             response.setStatus(401);
@@ -42,6 +41,18 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
         }
 
         request.setAttribute("userId", userId);
+        
+        User user = SecurityUtil.getUserByToken(actualToken);
+        if (user != null) {
+            SecurityUtil.setCurrentUser(user);
+        }
+        
         return true;
+    }
+    
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
+                               Object handler, Exception ex) {
+        SecurityUtil.clearCurrentUser();
     }
 }

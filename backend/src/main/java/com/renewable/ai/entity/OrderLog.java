@@ -39,4 +39,31 @@ public class OrderLog {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
+    
+    public Integer getOldStatus() { return oldStatus; }
+    public void setOldStatus(Integer oldStatus) { this.oldStatus = oldStatus; }
+    
+    public Integer getNewStatus() { return newStatus; }
+    public void setNewStatus(Integer newStatus) { this.newStatus = newStatus; }
+    
+    public String getActionName() { return actionName; }
+    public void setActionName(String actionName) { this.actionName = actionName; }
+    
+    public Long getOperatorId() { return operatorId; }
+    public void setOperatorId(Long operatorId) { this.operatorId = operatorId; }
+    
+    public String getOperatorName() { return operatorName; }
+    public void setOperatorName(String operatorName) { this.operatorName = operatorName; }
+    
+    public String getRemark() { return remark; }
+    public void setRemark(String remark) { this.remark = remark; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

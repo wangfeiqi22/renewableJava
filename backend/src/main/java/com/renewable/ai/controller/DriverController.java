@@ -1,81 +1,102 @@
 package com.renewable.ai.controller;
 
-import com.renewable.ai.entity.Order;
-import com.renewable.ai.repository.UserRepository;
-import com.renewable.ai.service.OrderService;
+import com.renewable.ai.common.ApiResponse;
+import com.renewable.ai.dto.DriverCreateDTO;
+import com.renewable.ai.dto.DriverUpdateDTO;
+import com.renewable.ai.dto.DriverVO;
+import com.renewable.ai.entity.User;
+import com.renewable.ai.service.DriverService;
+import com.renewable.ai.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import jakarta.servlet.http.HttpServletRequest;
-
 @RestController
-@RequestMapping("/api/driver")
+@RequestMapping("/api/fleet/drivers")
 @CrossOrigin(origins = "*")
 public class DriverController {
-
+    
     @Autowired
-    private OrderService orderService;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @GetMapping("/task/history")
-    public ResponseEntity<Page<Order>> getHistoryTasks(
-            HttpServletRequest request,
-            @RequestParam(required = false) Long driverId,
-            @RequestParam(required = false) String username,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
-    ) {
-        // Default date range: last 90 days
-        // Parse ISO string (e.g. 2023-10-01T12:00:00.000Z) to ZonedDateTime then to LocalDateTime
-        LocalDateTime end;
-        if (endDate != null) {
-            end = ZonedDateTime.parse(endDate).toLocalDateTime();
-        } else {
-            end = LocalDateTime.now();
-        }
+    private DriverService driverService;
+    
+    @PostMapping
+    public ResponseEntity<ApiResponse<DriverVO>> createDriver(@RequestBody DriverCreateDTO dto) {
+        User currentUser = SecurityUtil.getCurrentUser();
         
-        LocalDateTime start;
-        if (startDate != null) {
-            start = ZonedDateTime.parse(startDate).toLocalDateTime();
-        } else {
-            start = end.minusDays(90);
-        }
-
-        // Auth: drivers can only query their own history; admin can query any driver by id/username.
-        Long tokenUserId = null;
-        Object tokenUserIdAttr = request.getAttribute("userId");
-        if (tokenUserIdAttr instanceof Long) tokenUserId = (Long) tokenUserIdAttr;
-        if (tokenUserId == null) {
-            throw new RuntimeException("Unauthorized");
-        }
-
-        com.renewable.ai.entity.User me = userRepository.findById(tokenUserId)
-                .orElseThrow(() -> new RuntimeException("Unauthorized"));
-
-        Long resolvedDriverId = null;
-        if ("admin".equalsIgnoreCase(me.getRole())) {
-            resolvedDriverId = driverId;
-            if (resolvedDriverId == null && username != null && !username.isBlank()) {
-                resolvedDriverId = userRepository.findByUsername(username)
-                        .map(com.renewable.ai.entity.User::getId)
-                        .orElse(null);
-            }
-            if (resolvedDriverId == null) {
-                throw new RuntimeException("driverId or username is required");
-            }
-        } else {
-            // non-admin always uses token userId
-            resolvedDriverId = tokenUserId;
-        }
-
-        return ResponseEntity.ok(orderService.getDriverHistory(resolvedDriverId, page, pageSize, start, end));
+        DriverVO driver = driverService.createDriver(
+                dto, 
+                currentUser.getFleetId(), 
+                currentUser.getId(), 
+                currentUser.getName()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(driver));
+    }
+    
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<DriverVO>>> getDrivers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) String status) {
+        
+        User currentUser = SecurityUtil.getCurrentUser();
+        
+        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction) ? 
+                                       Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sort));
+        
+        Page<DriverVO> drivers = driverService.getDrivers(
+                currentUser.getFleetId(), name, phone, status, pageable);
+        
+        return ResponseEntity.ok(ApiResponse.success(drivers));
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<DriverVO>> getDriverById(@PathVariable Long id) {
+        User currentUser = SecurityUtil.getCurrentUser();
+        
+        DriverVO driver = driverService.getDriverById(id, currentUser.getFleetId());
+        
+        return ResponseEntity.ok(ApiResponse.success(driver));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<DriverVO>> updateDriver(
+            @PathVariable Long id,
+            @RequestBody DriverUpdateDTO dto) {
+        
+        User currentUser = SecurityUtil.getCurrentUser();
+        
+        DriverVO driver = driverService.updateDriver(
+                id, 
+                dto, 
+                currentUser.getFleetId(), 
+                currentUser.getId(), 
+                currentUser.getName()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(driver));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteDriver(@PathVariable Long id) {
+        User currentUser = SecurityUtil.getCurrentUser();
+        
+        driverService.deleteDriver(
+                id, 
+                currentUser.getFleetId(), 
+                currentUser.getId(), 
+                currentUser.getName()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

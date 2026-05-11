@@ -1,5 +1,9 @@
 package com.renewable.ai.util;
 
+import com.renewable.ai.entity.User;
+import com.renewable.ai.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -7,9 +11,17 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Component
 public class SecurityUtil {
 
     private static final ConcurrentHashMap<String, Long> TOKEN_USER_MAP = new ConcurrentHashMap<>();
+    private static final ThreadLocal<User> CURRENT_USER = new ThreadLocal<>();
+    private static UserRepository userRepository;
+    
+    @Autowired
+    public void setUserRepository(UserRepository repository) {
+        SecurityUtil.userRepository = repository;
+    }
 
     public static String hashPassword(String password) {
         try {
@@ -42,5 +54,25 @@ public class SecurityUtil {
 
     public static boolean verifyPassword(String rawPassword, String hashedPassword) {
         return hashPassword(rawPassword).equals(hashedPassword);
+    }
+    
+    public static User getCurrentUser() {
+        return CURRENT_USER.get();
+    }
+    
+    public static void setCurrentUser(User user) {
+        CURRENT_USER.set(user);
+    }
+    
+    public static void clearCurrentUser() {
+        CURRENT_USER.remove();
+    }
+    
+    public static User getUserByToken(String token) {
+        Long userId = getUserIdByToken(token);
+        if (userId != null && userRepository != null) {
+            return userRepository.findById(userId).orElse(null);
+        }
+        return null;
     }
 }

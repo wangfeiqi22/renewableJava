@@ -21,7 +21,53 @@ public class OrderController {
     public ResponseEntity<Order> createOrder(@RequestBody Order order) {
         return ResponseEntity.ok(orderService.createOrder(order));
     }
+
+    @PostMapping("/fleet-create")
+    public ResponseEntity<?> createFleetOrder(@RequestBody Map<String, Object> payload) {
+        try {
+            // Extract fields from payload
+            Order order = new Order();
+            order.setPickupAddress((String) payload.get("pickupAddress"));
+            order.setWasteType((String) payload.get("wasteType"));
+            order.setPlacementStatus((String) payload.get("placementStatus"));
+            order.setWasteDesc((String) payload.get("wasteDesc"));
+
+            // Handle numeric conversion safely
+            Object weightObj = payload.get("estWeight");
+            if (weightObj != null) {
+                if (weightObj instanceof Integer) {
+                    order.setEstWeight(java.math.BigDecimal.valueOf((Integer) weightObj));
+                } else if (weightObj instanceof Double) {
+                    order.setEstWeight(java.math.BigDecimal.valueOf((Double) weightObj));
+                }
+            }
+
+            // Extract driver and fleet info
+            Long driverId = payload.get("driverId") != null ? ((Number) payload.get("driverId")).longValue() : null;
+            Long fleetId = payload.get("fleetId") != null ? ((Number) payload.get("fleetId")).longValue() : null;
+
+            // Validate driver selection
+            if (driverId == null) {
+                return ResponseEntity.badRequest().body(Map.of("message", "请选择司机"));
+            }
+
+            Order created = orderService.createFleetOrder(order, driverId, fleetId);
+            return ResponseEntity.ok(created);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
     
+    @GetMapping("/{orderId}")
+    public ResponseEntity<Order> getOrderById(@PathVariable Long orderId) {
+        Order order = orderService.getOrderById(orderId);
+        if (order != null) {
+            return ResponseEntity.ok(order);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @GetMapping("/pool")
     public ResponseEntity<List<Order>> getPoolOrders() {
         return ResponseEntity.ok(orderService.getPoolOrders());
@@ -59,31 +105,39 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/assign")
-    public ResponseEntity<Order> assignOrder(@PathVariable Long orderId, @RequestBody Map<String, Long> payload) {
-        return ResponseEntity.ok(orderService.assignOrder(orderId, payload.get("fleetId"), payload.get("driverId"), payload.get("vehicleId")));
+    public ResponseEntity<Order> assignOrder(@PathVariable Long orderId, @RequestBody Map<String, Object> payload) {
+        Long fleetId = payload.get("fleetId") instanceof Number ? ((Number) payload.get("fleetId")).longValue() : null;
+        Long driverId = payload.get("driverId") instanceof Number ? ((Number) payload.get("driverId")).longValue() : null;
+        Long vehicleId = payload.get("vehicleId") instanceof Number ? ((Number) payload.get("vehicleId")).longValue() : null;
+        return ResponseEntity.ok(orderService.assignOrder(orderId, fleetId, driverId, vehicleId));
     }
 
     @PostMapping("/self-create")
-    public ResponseEntity<Order> createSelfOrder(@RequestBody Map<String, Object> payload) {
-        // Extract fields manually since payload structure differs slightly from Order entity
-        Order order = new Order();
-        order.setPickupAddress((String) payload.get("pickupAddress"));
-        order.setWasteType((String) payload.get("wasteType"));
-        // Handle numeric conversion safely
-        Object weightObj = payload.get("estWeight");
-        if (weightObj instanceof Integer) {
-            order.setEstWeight(java.math.BigDecimal.valueOf((Integer) weightObj));
-        } else if (weightObj instanceof Double) {
-            order.setEstWeight(java.math.BigDecimal.valueOf((Double) weightObj));
+    public ResponseEntity<?> createSelfOrder(@RequestBody Map<String, Object> payload) {
+        try {
+            // Extract fields manually since payload structure differs slightly from Order entity
+            Order order = new Order();
+            order.setPickupAddress((String) payload.get("pickupAddress"));
+            order.setWasteType((String) payload.get("wasteType"));
+            // Handle numeric conversion safely
+            Object weightObj = payload.get("estWeight");
+            if (weightObj instanceof Integer) {
+                order.setEstWeight(java.math.BigDecimal.valueOf((Integer) weightObj));
+            } else if (weightObj instanceof Double) {
+                order.setEstWeight(java.math.BigDecimal.valueOf((Double) weightObj));
+            }
+            
+            // Shipper info (stored in wasteDesc or separate fields if entity updated)
+            String shipperInfo = "托运人: " + payload.get("shipperName") + " (" + payload.get("shipperPhone") + ")";
+            order.setWasteDesc(shipperInfo);
+            
+            Long driverId = ((Number) payload.get("driverId")).longValue();
+            
+            Order created = orderService.createSelfOrder(order, driverId);
+            return ResponseEntity.ok(created);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
-        
-        // Shipper info (stored in wasteDesc or separate fields if entity updated)
-        String shipperInfo = "托运人: " + payload.get("shipperName") + " (" + payload.get("shipperPhone") + ")";
-        order.setWasteDesc(shipperInfo);
-        
-        Long driverId = ((Number) payload.get("driverId")).longValue();
-        
-        return ResponseEntity.ok(orderService.createSelfOrder(order, driverId));
     }
 
     @GetMapping("/{orderId}/logs")
@@ -97,5 +151,48 @@ public class OrderController {
     @GetMapping("/{orderId}/photos")
     public ResponseEntity<List<com.renewable.ai.entity.OrderPhoto>> getOrderPhotos(@PathVariable Long orderId) {
         return ResponseEntity.ok(orderPhotoRepository.findByOrderId(orderId));
+    }
+
+    @GetMapping("/estimate-trucks")
+    public ResponseEntity<Map<String, Object>> estimateTrucks(@RequestParam("volume") Double volume) {
+        if (volume == null || volume < 0) {
+            return ResponseEntity.badRequest().body(Map.of("error", "无效的垃圾方数"));
+        }
+        
+        double capacity = 6.0;
+        int requiredTrucks = (int) Math.ceil(volume / capacity);
+        int fullTrucks = (int) Math.floor(volume / capacity);
+        double remainingVolume = volume % capacity;
+        
+        // Handle floating point precision
+        remainingVolume = Math.round(remainingVolume * 10.0) / 10.0;
+        if (remainingVolume == capacity) {
+            fullTrucks++;
+            remainingVolume = 0;
+        }
+
+        String suggestion;
+        if (fullTrucks == 0 && remainingVolume == 0) {
+            suggestion = "无需车辆";
+        } else if (fullTrucks == 0) {
+            // Remove .0 if it's an integer
+            String remStr = (remainingVolume == (long) remainingVolume) ? String.format("%d", (long) remainingVolume) : String.valueOf(remainingVolume);
+            suggestion = "1车" + remStr + "方";
+        } else if (remainingVolume > 0) {
+            String remStr = (remainingVolume == (long) remainingVolume) ? String.format("%d", (long) remainingVolume) : String.valueOf(remainingVolume);
+            suggestion = fullTrucks + "车满载(6方) + 1车" + remStr + "方";
+        } else {
+            suggestion = fullTrucks + "车满载(6方)";
+        }
+        
+        Map<String, Object> result = Map.of(
+            "volume", volume,
+            "truckCapacity", capacity,
+            "requiredTrucks", requiredTrucks,
+            "fullTrucks", fullTrucks,
+            "remainingVolume", remainingVolume,
+            "suggestion", suggestion
+        );
+        return ResponseEntity.ok(result);
     }
 }

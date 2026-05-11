@@ -19,8 +19,15 @@ public class AiChatController {
     private AiChatService aiChatService;
 
     @PostMapping("/sessions")
-    public ResponseEntity<AiChatSession> createSession(@RequestBody Map<String, Long> payload) {
-        return ResponseEntity.ok(aiChatService.createSession(payload.get("userId")));
+    public ResponseEntity<AiChatSession> createSession(@RequestBody Map<String, Object> payload) {
+        Object userIdObj = payload.get("userId");
+        Long userId = null;
+        if (userIdObj instanceof Number) {
+            userId = ((Number) userIdObj).longValue();
+        } else if (userIdObj instanceof String) {
+            userId = Long.parseLong((String) userIdObj);
+        }
+        return ResponseEntity.ok(aiChatService.createSession(userId));
     }
 
     @GetMapping("/sessions/user/{userId}")

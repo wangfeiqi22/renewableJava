@@ -74,4 +74,77 @@ public class User {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+    
+    public String getName() {
+        return contactName != null && !contactName.isBlank() ? contactName : username;
+    }
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
+    
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
+    
+    public String getContactName() { return contactName; }
+    public void setContactName(String contactName) { this.contactName = contactName; }
+    
+    public String getContactPhone() { return contactPhone; }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+    
+    public String getDriverType() { return driverType; }
+    public void setDriverType(String driverType) { this.driverType = driverType; }
+    
+    public String getVehiclePlate() { return vehiclePlate; }
+    public void setVehiclePlate(String vehiclePlate) { this.vehiclePlate = vehiclePlate; }
+    
+    public String getIdNumber() { return idNumber; }
+    public void setIdNumber(String idNumber) { this.idNumber = idNumber; }
+    
+    public String getDriverLicenseNumber() { return driverLicenseNumber; }
+    public void setDriverLicenseNumber(String driverLicenseNumber) { this.driverLicenseNumber = driverLicenseNumber; }
+    
+    public String getCompanyLicenseUrl() { return companyLicenseUrl; }
+    public void setCompanyLicenseUrl(String companyLicenseUrl) { this.companyLicenseUrl = companyLicenseUrl; }
+    
+    public String getCompanyLegalIdCardUrl() { return companyLegalIdCardUrl; }
+    public void setCompanyLegalIdCardUrl(String companyLegalIdCardUrl) { this.companyLegalIdCardUrl = companyLegalIdCardUrl; }
+    
+    public String getDriverIdCardUrl() { return driverIdCardUrl; }
+    public void setDriverIdCardUrl(String driverIdCardUrl) { this.driverIdCardUrl = driverIdCardUrl; }
+    
+    public String getDriverLicenseUrl() { return driverLicenseUrl; }
+    public void setDriverLicenseUrl(String driverLicenseUrl) { this.driverLicenseUrl = driverLicenseUrl; }
+    
+    public String getAuditRemark() { return auditRemark; }
+    public void setAuditRemark(String auditRemark) { this.auditRemark = auditRemark; }
+    
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    public Long getFleetId() { return fleetId; }
+    public void setFleetId(Long fleetId) { this.fleetId = fleetId; }
 }

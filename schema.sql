@@ -82,6 +82,8 @@ CREATE TABLE biz_orders (
     id BIGSERIAL PRIMARY KEY,
     order_no VARCHAR(32) NOT NULL UNIQUE,
     creator_id BIGINT REFERENCES sys_users(id),
+    source_type VARCHAR(50),
+    owner_id BIGINT,
     type SMALLINT NOT NULL, -- 1: Smart, 2: Property, 3: Street, 4: VIP, 5: Individual Self
     status SMALLINT DEFAULT 10, -- 10: Pending, 20: Assigned, 30: Loading, 40: Transit, 50: Arrived, 60: Done, 90: Cancelled
     

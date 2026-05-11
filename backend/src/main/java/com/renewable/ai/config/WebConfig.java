@@ -29,7 +29,12 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/auth/**",
                         // 注册页“所属车队”下拉需要（无需登录）
-                        "/api/fleets/**"
+                        "/api/fleets/**",
+                        "/api/orders/estimate-trucks",
+                        "/error",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html"
                 );
     }
 

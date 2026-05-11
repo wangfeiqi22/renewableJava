@@ -93,12 +93,39 @@
                      <el-form-item label="预估重量 (kg)">
                          <el-input-number v-model="createForm.estWeight" :min="0" style="width: 100%" />
                      </el-form-item>
-                     <el-form-item label="备注说明">
-                        <el-input 
-                          type="textarea" 
-                          v-model="createForm.wasteDesc" 
-                          placeholder="描述垃圾的具体情况..." 
-                          :rows="3"
+                     <el-form-item label="AI识别结果" v-if="createForm.wasteType">
+                        <div class="ai-result-card">
+                          <div class="ai-result-header">
+                            <span class="ai-badge">🤖 AI智能识别</span>
+                            <span class="ai-confidence">置信度: {{ lastAiConfidence || 0 }}%</span>
+                          </div>
+                          <div class="ai-result-content">
+                            <div class="ai-stat-row">
+                              <span class="stat-label">📦 预估体积:</span>
+                              <span class="stat-value">{{ lastAiVolume || 0 }} m³</span>
+                            </div>
+                            <div class="ai-stat-row">
+                              <span class="stat-label">🔢 预估数量:</span>
+                              <span class="stat-value">{{ lastAiCount || 0 }} 件</span>
+                            </div>
+                            <div class="ai-stat-row">
+                              <span class="stat-label">⚖️ 预估重量:</span>
+                              <span class="stat-value">{{ lastAiWeight || '未知' }}</span>
+                            </div>
+                            <div class="ai-stat-row">
+                              <span class="stat-label">📝 处置方式:</span>
+                              <span class="stat-value">{{ lastAiDisposal || '标准处置' }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </el-form-item>
+
+                      <el-form-item label="备注说明">
+                        <el-input
+                          type="textarea"
+                          v-model="createForm.wasteDesc"
+                          placeholder="AI已自动生成备注，可手动修改..."
+                          :rows="4"
                           resize="none"
                           class="input-field"
                         />
@@ -409,17 +436,24 @@ const detailLoading = ref(false)
 const uploadNodeType = ref('')
 const fileList = ref([])
 
+// AI识别结果存储
+const lastAiConfidence = ref(0)
+const lastAiVolume = ref(0)
+const lastAiCount = ref(0)
+const lastAiWeight = ref('')
+const lastAiDisposal = ref('')
+const lastAiCategory = ref('')
+
 const wasteTypes = [
-  { label: '生活垃圾', value: 'household', icon: '🏠' },
-  { label: '建筑垃圾', value: 'construction', icon: '🧱' },
-  { label: '大件垃圾', value: 'bulky', icon: '🛋️' },
-  { label: '厨余垃圾', value: 'kitchen', icon: '🍲' }
+  { label: '可回收物', value: 'recyclable', icon: '♻️' },
+  { label: '有害垃圾', value: 'hazardous', icon: '☠️' },
+  { label: '湿垃圾', value: 'wet', icon: '🍲' },
+  { label: '干垃圾', value: 'dry', icon: '🗑️' }
 ]
 
 const getWasteTypeName = (val) => {
-  // Normalize input to handle case-insensitivity or standard formats
   const normalizedVal = val ? val.toString().toUpperCase() : ''
-  
+
   const map = {
     'HOUSEHOLD': '生活垃圾',
     'CONSTRUCTION': '建筑垃圾',
@@ -427,14 +461,12 @@ const getWasteTypeName = (val) => {
     'KITCHEN': '厨余垃圾',
     'RECYCLABLE': '可回收物',
     'HAZARDOUS': '有害垃圾',
+    'WET': '湿垃圾',
+    'DRY': '干垃圾',
     'OTHER': '其他垃圾'
   }
-  
-  // Try direct map, then check wasteTypes array for backward compatibility
-  if (map[normalizedVal]) return map[normalizedVal]
-  
-  const type = wasteTypes.find(t => t.value.toUpperCase() === normalizedVal)
-  return type ? type.label : val
+
+  return map[normalizedVal] || val || '-'
 }
 
 const handleAddressSelected = (address) => {
@@ -446,52 +478,115 @@ const handleAddressSelected = (address) => {
 const handleAiAnalyze = async (options) => {
   aiAnalyzing.value = true
   aiLoadingText.value = '正在上传图片到云端...'
-  
+
   try {
-    // Step 1: Upload Simulation
-    await new Promise(resolve => setTimeout(resolve, 800))
-    
-    // Step 2: Processing Simulation
-    aiLoadingText.value = 'AI 视觉引擎正在识别物体特征...'
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Step 3: Classification Simulation
-    aiLoadingText.value = '正在匹配垃圾分类规则...'
-    await new Promise(resolve => setTimeout(resolve, 800))
-
-    // Step 4: Result Generation
-    // Logic: Use file size as seed to be deterministic for same file
-    const types = ['construction', 'household', 'kitchen', 'bulky']
-    const seed = options.file.size
-    const typeIndex = seed % types.length
-    const detectedType = types[typeIndex]
-    
-    // Generate weight (random but realistic range based on type)
-    let weight = 0
-    if (detectedType === 'construction') weight = 50 + Math.floor((seed % 200)) // 50-250kg
-    else if (detectedType === 'household') weight = 5 + Math.floor((seed % 20)) // 5-25kg
-    else if (detectedType === 'kitchen') weight = 10 + Math.floor((seed % 40)) // 10-50kg
-    else if (detectedType === 'bulky') weight = 30 + Math.floor((seed % 100)) // 30-130kg
-    
-    // Generate Professional Description
-    const descriptions = {
-      construction: ['检测到砖块、混凝土碎块及部分木材遗留。', '识别为装修废弃物，包含石膏板和水泥袋。', '建筑渣土堆积，混有少量金属废料。'],
-      household: ['识别为日常生活垃圾，主要包含纸屑、塑料包装。', '混合生活废弃物，检测到多个垃圾袋堆积。', '居民生活垃圾，需分类处理。'],
-      kitchen: ['检测到餐饮废弃物，含有果皮、蔬菜残余。', '厨余垃圾识别，建议密封运输以防泄漏。', '高水分有机垃圾，需专用容器清运。'],
-      bulky: ['识别为废旧家具（沙发/床垫），体积较大。', '大件废弃物，检测到废弃家电或木制家具。', '不规则大件垃圾，建议使用平板车清运。']
+    // 验证文件对象
+    if (!options.file) {
+      throw new Error('未检测到上传的文件')
     }
-    const descIndex = seed % descriptions[detectedType].length
-    const confidence = (90 + (seed % 90) / 10).toFixed(1) // 90.0 - 99.0%
-    const description = `${descriptions[detectedType][descIndex]} (AI置信度: ${confidence}%)`
 
+    if (!options.file.size || options.file.size === 0) {
+      throw new Error('文件大小为0或无效')
+    }
+
+    // Step 1: 调用真实的AI识别API
+    aiLoadingText.value = '正在连接AI识别服务...'
+    const formData = new FormData()
+    formData.append('file', options.file)
+
+    // 获取用户ID（如果有）
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
+    if (userInfo.id) {
+      formData.append('userId', userInfo.id)
+    }
+
+    // Step 2: 发送请求到后端
+    aiLoadingText.value = 'AI 视觉引擎正在识别物体特征...'
+    const response = await fetch('/api/ai/recognize-waste', {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status}`)
+    }
+
+    // Step 3: 解析响应
+    aiLoadingText.value = '正在匹配垃圾分类规则...'
+    const data = await response.json()
+
+    if (!data || !data.category) {
+      throw new Error('AI识别服务返回数据格式错误')
+    }
+
+    // Step 4: 处理识别结果
+
+    // 将英文类别转换为内部格式
+    const categoryMap = {
+      'recyclable': 'household',
+      'hazardous': 'construction',
+      'wet': 'kitchen',
+      'dry': 'construction',
+      'construction': 'construction',
+      'household': 'household',
+      'kitchen': 'kitchen',
+      'bulky': 'bulky'
+    }
+
+    const detectedType = categoryMap[data.category] || 'household'
+
+    // 使用AI返回的体积和数量信息
+    const volume = data.estimatedVolume || 0.1
+    const count = data.estimatedCount || 1
+    const weightStr = data.estimatedWeight || `${Math.round(volume * 1000)}kg`
+
+    // 解析重量数值
+    let weight = 50
+    const weightMatch = weightStr.match(/(\d+\.?\d*)/)
+    if (weightMatch) {
+      weight = parseFloat(weightMatch[1])
+    } else {
+      if (detectedType === 'construction') weight = 50 + Math.floor(Math.random() * 200)
+      else if (detectedType === 'household') weight = 5 + Math.floor(Math.random() * 20)
+      else if (detectedType === 'kitchen') weight = 10 + Math.floor(Math.random() * 40)
+      else if (detectedType === 'bulky') weight = 30 + Math.floor(Math.random() * 100)
+    }
+
+    // 使用AI返回的详细备注或生成简版描述
+    let remark = data.smartRemark || `${data.itemName} (AI置信度: ${data.confidence}%)`
+
+    // 如果有智能备注，格式化显示
+    if (data.smartRemark) {
+      remark = data.smartRemark.replace(/\n/g, ' | ')
+    } else {
+      remark = `${data.itemName} (AI置信度: ${data.confidence}%) | 体积: ${volume}m³ | 数量: ${count}件 | 重量: ${weightStr}`
+    }
+
+    // 更新表单
     createForm.wasteType = detectedType
     createForm.estWeight = weight
-    createForm.wasteDesc = description
-    
-    ElMessage.success(`AI 识别完成：${getWasteTypeName(detectedType)}，置信度 ${confidence}%`)
+    createForm.wasteDesc = remark
+
+    // 更新AI识别结果存储
+    lastAiConfidence.value = data.confidence || 0
+    lastAiVolume.value = volume || 0
+    lastAiCount.value = count || 0
+    lastAiWeight.value = weightStr || '未知'
+    lastAiDisposal.value = data.disposalMethod || '标准处置'
+    lastAiCategory.value = detectedType
+
+    // 显示详细识别信息
+    const categoryName = getWasteTypeName(detectedType)
+    ElMessage({
+      message: `AI 识别完成！\n物品：${data.itemName}\n类型：${categoryName}\n置信度：${data.confidence}%\n体积：${volume}m³\n数量：${count}件\n重量：${weightStr}`,
+      type: 'success',
+      duration: 5000,
+      showClose: true
+    })
+
   } catch (e) {
-    console.error(e)
-    ElMessage.error('AI 识别服务连接超时，请手动输入')
+    console.error('AI识别失败:', e)
+    ElMessage.error('AI 识别失败，请手动输入信息')
   } finally {
     aiAnalyzing.value = false
     aiLoadingText.value = ''
@@ -577,7 +672,7 @@ const grabOrder = async (orderId) => {
 
 const submitSelfOrder = async () => {
     try {
-        await api.post('/orders/self-create', { ...createForm, driverId: user.id })
+        const res = await api.post('/orders/self-create', { ...createForm, driverId: user.id })
         ElMessage.success('建单成功')
         // Clear form
         createForm.shipperName = ''
@@ -587,14 +682,11 @@ const submitSelfOrder = async () => {
         createForm.estWeight = 0
         createForm.wasteDesc = ''
         
-        // Fetch latest data first
-        await fetchTasks()
-        
-        // Force switch tab with a small delay to ensure DOM update
-        activeTab.value = 'pending'
+        // Navigate to the driver order detail directly
+        router.push(`/driver/order/${res.data.id}`)
     } catch (e) {
         console.error(e)
-        ElMessage.error('建单失败: ' + (e.response?.data?.message || '未知错误'))
+        ElMessage.error(e.response?.data?.message || '建单失败')
     }
 }
 
@@ -1096,5 +1188,57 @@ onMounted(() => {
 
 :deep(.el-dialog__body) {
   padding-top: 0;
+}
+
+/* AI识别结果卡片样式 */
+.ai-result-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 16px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.ai-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ai-badge {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.ai-confidence {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.ai-result-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ai-stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
 }
 </style>

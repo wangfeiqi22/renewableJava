@@ -21,4 +21,13 @@ public class AiChatSession {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+    
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

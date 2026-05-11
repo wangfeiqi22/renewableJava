@@ -17,7 +17,8 @@ public class DataSeeder {
                                    StationRepository stationRepository,
                                    FleetRepository fleetRepository,
                                    VehicleRepository vehicleRepository,
-                                   KnowledgeBaseRepository kbRepository) {
+                                   KnowledgeBaseRepository kbRepository,
+                                   OrderRepository orderRepository) {
         return args -> {
             // 1. Init Admin User
             userRepository.findByUsername("admin").ifPresentOrElse(existing -> {
@@ -90,6 +91,43 @@ public class DataSeeder {
                 User saved = userRepository.save(station);
                 stationAdminIdHolder[0] = saved.getId();
                 System.out.println("Initialized Station Admin: station1 / 123456");
+            });
+
+            // 2.3 Init Fleet Owner (车队运营管理员)
+            userRepository.findByUsername("fleetowner1").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
+                User fleetOwner = new User();
+                fleetOwner.setUsername("fleetowner1");
+                fleetOwner.setPasswordHash(SecurityUtil.hashPassword("123456"));
+                fleetOwner.setRole("fleet_owner");
+                fleetOwner.setPhone("13900000010");
+                fleetOwner.setFleetId(1L); // Belongs to Fleet 1
+                fleetOwner.setStatus(1);
+                fleetOwner.setCompanyName("北京第一清运公司");
+                userRepository.save(fleetOwner);
+                System.out.println("Initialized Fleet Owner: fleetowner1 / 123456");
+            });
+
+            // 2.4 Init Fleet Dispatcher (车队调度员)
+            userRepository.findByUsername("dispatcher1").ifPresentOrElse(existing -> {
+                if (existing.getStatus() == null || existing.getStatus() != 1) {
+                    existing.setStatus(1);
+                    userRepository.save(existing);
+                }
+            }, () -> {
+                User dispatcher = new User();
+                dispatcher.setUsername("dispatcher1");
+                dispatcher.setPasswordHash(SecurityUtil.hashPassword("123456"));
+                dispatcher.setRole("fleet_dispatcher");
+                dispatcher.setPhone("13900000011");
+                dispatcher.setFleetId(1L); // Belongs to Fleet 1
+                dispatcher.setStatus(1);
+                userRepository.save(dispatcher);
+                System.out.println("Initialized Fleet Dispatcher: dispatcher1 / 123456");
             });
 
             // 3. Init Individual User
@@ -176,6 +214,32 @@ public class DataSeeder {
                 k2.setCategory("guide");
                 kbRepository.save(k2);
                 System.out.println("Initialized Knowledge Base");
+            }
+            
+            // 6. Init Mock Orders for Pool (status=10)
+            if (stationRepository.count() > 0 && fleetRepository.count() > 0) {
+                if (orderRepository.findByStatus(10).isEmpty()) {
+                    Order o1 = new Order();
+                    o1.setOrderNo("QY" + System.currentTimeMillis());
+                    o1.setPickupAddress("北京市朝阳区高碑店路22号");
+                    o1.setWasteType("CONSTRUCTION");
+                    o1.setEstWeight(new BigDecimal("1200.5"));
+                    o1.setAmount(new BigDecimal("600.0"));
+                    o1.setStatus(10);
+                    o1.setStationId(stationRepository.findAll().get(0).getId());
+                    orderRepository.save(o1);
+
+                    Order o2 = new Order();
+                    o2.setOrderNo("QY" + (System.currentTimeMillis() + 1));
+                    o2.setPickupAddress("北京市海淀区中关村软件园");
+                    o2.setWasteType("BULKY");
+                    o2.setEstWeight(new BigDecimal("500.0"));
+                    o2.setAmount(new BigDecimal("250.0"));
+                    o2.setStatus(10);
+                    o2.setStationId(stationRepository.findAll().get(1).getId());
+                    orderRepository.save(o2);
+                    System.out.println("Initialized Mock Orders in Pool");
+                }
             }
         };
     }

@@ -43,4 +43,31 @@ public class OrderPhoto {
             takenAt = LocalDateTime.now();
         }
     }
+    
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
+    
+    public String getNodeType() { return nodeType; }
+    public void setNodeType(String nodeType) { this.nodeType = nodeType; }
+    
+    public String getFileUrl() { return fileUrl; }
+    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
+    
+    public BigDecimal getGpsLat() { return gpsLat; }
+    public void setGpsLat(BigDecimal gpsLat) { this.gpsLat = gpsLat; }
+    
+    public BigDecimal getGpsLon() { return gpsLon; }
+    public void setGpsLon(BigDecimal gpsLon) { this.gpsLon = gpsLon; }
+    
+    public LocalDateTime getTakenAt() { return takenAt; }
+    public void setTakenAt(LocalDateTime takenAt) { this.takenAt = takenAt; }
+    
+    public Boolean getIsWatermarked() { return isWatermarked; }
+    public void setIsWatermarked(Boolean isWatermarked) { this.isWatermarked = isWatermarked; }
+    
+    public String getExifData() { return exifData; }
+    public void setExifData(String exifData) { this.exifData = exifData; }
 }

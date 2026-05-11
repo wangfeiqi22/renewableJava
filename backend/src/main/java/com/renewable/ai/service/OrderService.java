@@ -39,12 +39,25 @@ public class OrderService {
         orderLogRepository.save(log);
     }
 
+    private static final java.util.concurrent.atomic.AtomicInteger sequence = new java.util.concurrent.atomic.AtomicInteger(1);
+    private static String currentDateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+    private synchronized String generateOrderNo() {
+        String todayStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        if (!todayStr.equals(currentDateStr)) {
+            currentDateStr = todayStr;
+            sequence.set(1);
+        }
+        int seq = sequence.getAndIncrement();
+        return String.format("QY%s%05d", todayStr, seq);
+    }
+
     public List<com.renewable.ai.entity.OrderLog> getOrderLogs(Long orderId) {
         return orderLogRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
     }
 
     public Order createOrder(Order order) {
-        order.setOrderNo(UUID.randomUUID().toString().replace("-", ""));
+        order.setOrderNo(generateOrderNo());
         if (order.getStatus() == null) {
             order.setStatus(10); // Default to Pool
         }
@@ -69,6 +82,10 @@ public class OrderService {
         return orderRepository.findByCreatorIdOrDriverId(userId, userId);
     }
     
+    public Order getOrderById(Long orderId) {
+        return orderRepository.findById(orderId).orElse(null);
+    }
+    
     public List<Order> getPoolOrders() {
         return orderRepository.findAll().stream()
                 .filter(o -> o.getStatus() == 10)
@@ -90,11 +107,11 @@ public class OrderService {
             throw new RuntimeException("Access Denied: Freelance drivers cannot grab pool orders.");
         }
 
-        order.setStatus(20); // Assigned/Grabbed
+        order.setStatus(25); // Accepted (driver grabbed it directly)
         order.setDriverId(driverId);
         order.setFleetId(driver.getFleetId()); // Assign to fleet as well
         Order savedOrder = orderRepository.save(order);
-        logStatusChange(savedOrder, 10, 20, "Grab", driverId, "司机抢单成功");
+        logStatusChange(savedOrder, 10, 25, "Grab", driverId, "司机抢单成功");
         return savedOrder;
     }
 
@@ -133,16 +150,53 @@ public class OrderService {
     }
 
     public Order createSelfOrder(Order order, Long driverId) {
-        order.setOrderNo(UUID.randomUUID().toString().replace("-", ""));
-        order.setDriverId(driverId);
-        order.setCreatorId(driverId); // Set creator as the driver
-        order.setStatus(20); // Directly assigned to self (Ready to pickup)
-        // Creator is technically the driver acting as agent, or we can leave creatorId null/system
-        // For simplicity, we set creatorId to driverId too or handle in controller
-        Order savedOrder = orderRepository.save(order);
-        logStatusChange(savedOrder, null, 20, "Self Create", driverId, "司机自主建单");
-        return savedOrder;
+    // Idempotency check: prevent duplicate submission within 1 minute
+    java.time.LocalDateTime oneMinuteAgo = java.time.LocalDateTime.now().minusMinutes(1);
+    if (orderRepository.existsByDriverIdAndPickupAddressAndCreatedAtAfter(driverId, order.getPickupAddress(), oneMinuteAgo)) {
+      throw new RuntimeException("重复提交：您刚刚已在该地址创建了相同清运单");
     }
+
+    order.setOrderNo(generateOrderNo());
+    order.setDriverId(driverId);
+    order.setCreatorId(driverId);
+    order.setOwnerId(driverId); // Assign owner
+    order.setSourceType("SELF_CREATE"); // Identify self-created scenario
+    order.setStatus(20); // Directly assigned to self (Ready to pickup)
+
+    Order savedOrder = orderRepository.save(order);
+    logStatusChange(savedOrder, null, 20, "Self Create", driverId, "个人司机自主建单并自动归属");
+    return savedOrder;
+  }
+
+  public Order createFleetOrder(Order order, Long driverId, Long fleetId) {
+    // Validate driver belongs to fleet
+    if (driverId == null) {
+      throw new RuntimeException("司机ID不能为空");
+    }
+
+    // Idempotency check: prevent duplicate submission within 1 minute
+    java.time.LocalDateTime oneMinuteAgo = java.time.LocalDateTime.now().minusMinutes(1);
+    if (orderRepository.existsByDriverIdAndPickupAddressAndCreatedAtAfter(driverId, order.getPickupAddress(), oneMinuteAgo)) {
+      throw new RuntimeException("重复提交：您刚刚已在该地址创建了相同清运单");
+    }
+
+    // Generate order number
+    order.setOrderNo(generateOrderNo());
+
+    // Set driver and fleet info
+    order.setDriverId(driverId);
+    order.setFleetId(fleetId);
+    order.setCreatorId(fleetId); // Fleet created the order
+    order.setOwnerId(fleetId);
+    order.setSourceType("FLEET_CREATE"); // Identify fleet-created scenario
+
+    // Set status to Assigned (20) - driver already assigned
+    order.setStatus(20);
+
+    Order savedOrder = orderRepository.save(order);
+    logStatusChange(savedOrder, null, 20, "Fleet Create", fleetId, "车队创建订单并指定司机");
+    return savedOrder;
+  }
 
     public org.springframework.data.domain.Page<Order> getDriverHistory(Long driverId, int page, int size, java.time.LocalDateTime startDate, java.time.LocalDateTime endDate) {
         org.springframework.data.domain.Pageable pageable =

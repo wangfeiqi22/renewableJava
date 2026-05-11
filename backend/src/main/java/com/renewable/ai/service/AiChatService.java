@@ -41,13 +41,9 @@ public class AiChatService {
         userMsg.setContent(content);
         messageRepository.save(userMsg);
 
-        // 2. Mock AI Response (In real world, call Rasa/OpenAI)
-        String aiResponseText = generateMockAiResponse(content);
+        // 2. Generate Smart Response
+        AiChatMessage aiMsg = generateSmartAiResponse(sessionId, content);
         
-        AiChatMessage aiMsg = new AiChatMessage();
-        aiMsg.setSessionId(sessionId);
-        aiMsg.setSenderType("ai");
-        aiMsg.setContent(aiResponseText);
         return messageRepository.save(aiMsg);
     }
 
@@ -55,24 +51,56 @@ public class AiChatService {
         return messageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId);
     }
 
-    private String generateMockAiResponse(String input) {
+    private AiChatMessage generateSmartAiResponse(String sessionId, String input) {
+        AiChatMessage response = new AiChatMessage();
+        response.setSessionId(sessionId);
+        response.setSenderType("ai");
+        
+        String lowerInput = input.toLowerCase();
+
+        // Intent Recognition & Routing
+        if (lowerInput.contains("下单") || lowerInput.contains("预约") || lowerInput.contains("清运单")) {
+            response.setIntent("CREATE_ORDER");
+            response.setActionPayload("/order/create");
+            response.setContent("已为您识别到【预约清运】需求，即将为您跳转到创建订单页面...");
+            return response;
+        } else if (lowerInput.contains("车队") || lowerInput.contains("车辆") || lowerInput.contains("司机")) {
+            response.setIntent("VIEW_FLEET");
+            response.setActionPayload("/station/fleet");
+            response.setContent("已为您识别到【车队管理】需求，即将为您跳转到车队大屏...");
+            return response;
+        } else if (lowerInput.contains("商城") || lowerInput.contains("兑换") || lowerInput.contains("买东西")) {
+            response.setIntent("VIEW_MALL");
+            response.setActionPayload("/mall");
+            response.setContent("已为您识别到【积分商城】需求，马上带您去逛逛...");
+            return response;
+        } else if (lowerInput.contains("知识库") || lowerInput.contains("学习") || lowerInput.contains("查资料") || lowerInput.contains("分类")) {
+            response.setIntent("VIEW_KNOWLEDGE");
+            response.setActionPayload("/knowledge");
+            response.setContent("已为您识别到【知识库查询】需求，正在跳转...");
+            return response;
+        } else if (lowerInput.contains("投诉") || lowerInput.contains("人工")) {
+            response.setIntent("HUMAN_SERVICE");
+            response.setContent("很抱歉给您带来不便，已为您转接人工客服，请稍候...");
+            return response;
+        }
+
         // 1. Check Knowledge Base first
         String kbAnswer = knowledgeBaseService.findAnswer(input);
         if (kbAnswer != null) {
-            return kbAnswer;
+            response.setContent(kbAnswer);
+            return response;
         }
 
-        // 2. Fallback to hardcoded logic
-        String lowerInput = input.toLowerCase();
+        // 2. Fallback to general greeting
         if (lowerInput.contains("你好") || lowerInput.contains("hello")) {
-            return "您好！我是智慧垃圾清运助手，请问有什么可以帮您？";
+            response.setContent("您好！我是智能客服助手。您可以使用文字或语音输入，我会为您解答问题或帮您快速办理业务。");
         } else if (lowerInput.contains("价格") || lowerInput.contains("费用")) {
-            return "我们的清运费用根据垃圾类型和重量计算，生活垃圾约 50元/吨，建筑垃圾约 80元/吨。";
-        } else if (lowerInput.contains("下单") || lowerInput.contains("预约")) {
-            return "您可以点击底部的“创建清运单”按钮进行预约。";
-        } else if (lowerInput.contains("投诉")) {
-            return "很抱歉给您带来不便，已为您转接人工客服，请稍候...";
+            response.setContent("我们的清运费用根据垃圾类型和重量计算，生活垃圾约 50元/吨，建筑垃圾约 80元/吨。");
+        } else {
+            response.setContent("我还在学习中，您能具体描述一下需求吗？比如您可以说：“我想预约清运” 或 “我要去积分商城”。");
         }
-        return "我还在学习中，您能具体描述一下需求吗？";
+        
+        return response;
     }
 }

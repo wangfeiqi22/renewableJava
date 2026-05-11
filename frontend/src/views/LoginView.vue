@@ -79,19 +79,17 @@ const handleLogin = async () => {
       localStorage.setItem('user', JSON.stringify(res.data.user))
       localStorage.setItem('token', res.data.token)
       
-      // Redirect based on role
       const role = res.data.user.role
-      if (role === 'admin') {
-        router.push('/admin/dashboard')
-      } else if (role === 'driver') {
-        router.push('/driver/tasks')
-      } else if (role === 'property') {
-        router.push('/property/dashboard')
-      } else if (role === 'station') {
-        router.push('/station/work')
-      } else {
-        router.push('/order/create')
+      const route = router.currentRoute.value
+      const redirect = route.query.redirect
+
+      if (redirect) {
+        router.push(redirect)
+        return
       }
+
+      // Redirect all users to unified AI Chat interface
+      router.push('/chat')
     }
   } catch (error) {
     console.error(error)
