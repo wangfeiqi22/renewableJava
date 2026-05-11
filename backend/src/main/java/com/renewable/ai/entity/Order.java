@@ -77,6 +77,27 @@ public class Order {
     @Column(name = "commission")
     private BigDecimal commission;
 
+    @Column(name = "matched_station_id")
+    private Long matchedStationId;
+
+    @Column(name = "match_distance_km", precision = 10, scale = 2)
+    private BigDecimal matchDistanceKm;
+
+    @Column(name = "match_algorithm")
+    private String matchAlgorithm;
+
+    @Column(name = "fee_calculation_status")
+    private String feeCalculationStatus = "PENDING";
+
+    @Column(name = "pickup_address_province")
+    private String pickupAddressProvince;
+
+    @Column(name = "pickup_address_city")
+    private String pickupAddressCity;
+
+    @Column(name = "pickup_address_district")
+    private String pickupAddressDistrict;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
